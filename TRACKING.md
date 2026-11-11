@@ -49,9 +49,10 @@ Last updated: 2026-11-11.
 | D6 | UI is the MVP priority; API work proceeds in parallel against a committed contract. |
 | D7 | API and UI marathons may run at the same time under distinct project labels (disjoint paths, contract-only coupling). |
 | D8 | STAR-20 (correct/void a duty) is kept as an optional stretch goal. Removal is a soft void; **there is always an audit trail** (nothing is hard-deleted, every change keeps what it replaced). The append-only `AuditEntry` table (Person and Duty entries) is introduced in STAR-6 (person create/rename), extended in STAR-8 (every duty create) and reused by STAR-20. Every write carries a self-declared `X-Actor` header read through an `IActorProvider`, stored on audit entries and log entries; verified identity is the stretch story STAR-21 (login, after STAR-20). |
-| D10 | Actor: required `X-Actor` header on all write routes (PROPOSAL until approved at contract review). A header, not a body field, so authentication can replace it later without changing routes or bodies. |
+| D10 | Actor: required `X-Actor` header on all write routes (approved by the owner 2026-11-11). A header, not a body field, so authentication can replace it later without changing routes or bodies. |
 | D9 | The PM created the parent issue and STAR-1..20 on 2026-11-11 with acceptance criteria. The `gh` active account was switched to `dmbierman1210`. |
-| PROPOSALs | Contract PROPOSAL items in STAR-2 (#3) still need the human's yes at contract review: object body for `POST /Person`, keep the response envelope, case-insensitive names, future start dates allowed, and the `X-Actor` header (D10). PM recommends rejecting future start dates (more than today + 1 day) instead of allowing them; waiting for the owner's answer. |
+| D11 | Contract decisions (owner, 2026-11-11), recorded in STAR-2 (#3): `POST /Person` body is an object `{ "name": "..." }`; the existing response envelope `{ success, message, responseCode }` (+ `errors[]`) is kept, HTTP status equals `responseCode`; names are trimmed, 1-200 chars, unique case-insensitively (the app checks, SQLite NOCASE only folds ASCII). |
+| D12 | Future start dates are **allowed but need a reason** (owner, 2026-11-11; supersedes an earlier "reject" answer). `dutyStartDate` later than today (UTC) without a non-blank `reason` -> 400 with a field error on `reason`. STAR-7 (#8) accepts future dates like any later date; the `Reason` column and the required-reason rule land in STAR-8 (#9). Contract in STAR-2 (#3). |
 
 ## Status table
 
@@ -60,7 +61,7 @@ Status: Proposed (issue exists with acceptance criteria, not yet startable) | No
 | | ID | Issue | Title | Lane | Pri | Pts (est) | Status | Claimed-by | Depends on |
 |---|---|---|---|---|---|---|---|---|---|
 | - | STAR-1 | [#2](https://github.com/dmbierman1210/BamTechExercise/issues/2) | [REPO] Flatten to target layout, `.gitignore`, solution file, drop stale bin/obj, first push to `main` | W0 | P1 | 2 | Done | copilot-827573 | - |
-| - | STAR-2 | [#3](https://github.com/dmbierman1210/BamTechExercise/issues/3) | [CONTRACT] API contract v1: `docs/api/openapi.yaml` + example payloads for people, duties, errors (reason field, 404/409 shapes) | W0 | P1 | 3 | Proposed | - | STAR-1 |
+| - | STAR-2 | [#3](https://github.com/dmbierman1210/BamTechExercise/issues/3) | [CONTRACT] API contract v1: `docs/api/openapi.yaml` + example payloads for people, duties, errors (reason field, 404/409 shapes) | W0 | P1 | 3 | In Progress | copilot-212699 | STAR-1 |
 | - | STAR-3 | [#4](https://github.com/dmbierman1210/BamTechExercise/issues/4) | [DB] Generate the database: reconcile model/migration drift, migrate on startup, seed sample data, unique index on `Person.Name`; scaffold `tests/` project | API | P1 | 3 | Proposed | - | STAR-2 |
 | - | STAR-4 | [#5](https://github.com/dmbierman1210/BamTechExercise/issues/5) | [SEC] Consolidate on EF, remove Dapper and all string-built SQL (fixes SQL injection) | API | P1 | 3 | Proposed | - | STAR-3, D5 |
 | - | STAR-5 | [#6](https://github.com/dmbierman1210/BamTechExercise/issues/6) | [API] Fix duties-by-name (wrong query, null-person crash, 404) | API | P1 | 2 | Proposed | - | STAR-4 |
@@ -123,6 +124,5 @@ Source of the stories above. Original paths: `extracted/tech_exercise/package/ex
 
 ## Open items for the human
 
-1. Contract PROPOSAL items (see Decisions): PM recommendations given in chat; waiting for the owner's yes, then they are recorded here and in issue #3.
-2. STAR-21: owner decisions on account model, sessions, roles and whether reads need login (see issue #22) before it is refined.
-3. Switch the `gh` account back to the work account when you finish working here, and back to `dmbierman1210` before any marathon.
+1. STAR-21: owner decisions on account model, sessions, roles and whether reads need login (see issue #22) before it is refined.
+2. Switch the `gh` account back to the work account when you finish working here, and back to `dmbierman1210` before any marathon.

@@ -39,7 +39,7 @@ ui/
       api-error.ts        ApiError (status, message, errors[]) + envelope mapping
       error.interceptor.ts  Maps every failed call to ApiError
     core/                 "Acting as": ActorService, interceptor, dialog, toolbar control, ActorRequiredDirective
-    pages/                People placeholder (filled by later stories) and the 404 page
+    pages/                People list (`/people`), person placeholder (`/people/:name`, replaced by STAR-12), 404
     app.*                 Shell: toolbar, nav (slide-over sidenav on phone widths), router outlet
   src/styles.scss         Theme: Material 3 dark theme + --acts-* CSS variables (colors, spacing, typography)
 ```
@@ -100,6 +100,30 @@ gap-free; derived `currentRank`, `currentDutyTitle`, `astronautStatus`, `careerS
 newest first. Order of checks follows the contract: header/body validation, then 404, then 409, then history rules.
 CORS is open, including `X-Actor` and the preflight.
 
+## People list (`/people`)
+
+The default route lists everyone from `GET /Person` (`PersonService.getPeople`) as responsive cards: name (a link to
+`/people/:name`, URL-encoded), current rank, current duty title and a status badge. Badges carry an icon and text, so
+color is never the only signal: `None` = "Not an astronaut", `Active`, `Retired`. States: loading skeleton, "No people
+yet" (with a disabled Add person placeholder until STAR-13; it uses `disabledInteractive`, so it stays focusable and
+points to its hint with `aria-describedby`), "No matches" (with a clear button) and a retryable error that shows the
+API message.
+
+List state lives in the URL query params, so it survives reloads and browser Back:
+
+| Param | Values | Default (omitted from the URL) |
+| --- | --- | --- |
+| `q` | name search, case-insensitive substring | empty |
+| `status` | `active`, `retired`, `none` | all |
+| `sort` | `name-asc`, `name-desc` (case-insensitive) | `name-asc` |
+
+Invalid values fall back to the defaults. Filter changes use `replaceUrl`, so they do not fill the history. Other pages
+that link back to the list should use `PeopleListState` (`pages/people-list-state.ts`), which remembers the last
+params: `<a routerLink="/people" [queryParams]="listState.queryParams()">Back to People</a>`.
+
 ## Screenshots
 
-`docs/screenshots/star-10-shell-desktop.png` (1280 px) and `star-10-shell-phone.png` (390 px).
+`docs/screenshots/`: `star-10-shell-desktop.png` (1280 px), `star-10-shell-phone.png` (390 px),
+`star-11-list-desktop.png`, `star-11-list-phone.png`, `star-11-search-filter.png`, `star-11-error.png` (mock stopped),
+`star-11-empty.png` (`MOCK_EMPTY=1`).
+

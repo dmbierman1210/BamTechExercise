@@ -191,6 +191,7 @@ describe('PeoplePage', () => {
     await open('/people?status=bogus&sort=sideways');
     expect(names().length).toBe(3);
     expect(labelled<HTMLSelectElement>('Status').value).toBe('all');
+    expect(labelled<HTMLSelectElement>('Sort').value).toBe('name-asc');
   });
 
   it('"no matches" offers to clear the search and filter', async () => {

@@ -3,7 +3,7 @@
   aria-labelledby="people-heading"
   [attr.aria-busy]="state().kind === 'loading'"
 >
-  <h1 id="people-heading">People</h1>
+  <h1 id="people-heading" #heading tabindex="-1">People</h1>
 
   @switch (state().kind) {
     @case ('loading') {
@@ -23,7 +23,7 @@
         <mat-icon class="notice-icon danger" aria-hidden="true">error</mat-icon>
         <h2>Could not load people</h2>
         <p class="message">{{ errorMessage() }}</p>
-        <button mat-flat-button type="button" (click)="load()">
+        <button mat-flat-button type="button" (click)="load(); heading.focus()">
           <mat-icon aria-hidden="true">refresh</mat-icon>
           Retry
         </button>
@@ -99,7 +99,7 @@
             <h2>No matches</h2>
             <p class="acts-muted">No one matches the current search and status filter.</p>
             @if (filtering()) {
-              <button mat-stroked-button type="button" (click)="clearFilters()">
+              <button mat-stroked-button type="button" (click)="clearFilters(); search.focus()">
                 Clear search and filter
               </button>
             }

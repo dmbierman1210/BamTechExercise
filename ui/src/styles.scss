@@ -1,0 +1,166 @@
+@use '@angular/material' as mat;
+
+// "Mission control" dark theme: Material 3 system tokens plus --acts-* tokens for the app's own styles.
+// All text/background pairs below meet WCAG AA (4.5:1 for text, 3:1 for UI boundaries).
+html {
+  color-scheme: dark;
+
+  @include mat.theme(
+    (
+      color: (
+        theme-type: dark,
+        primary: mat.$cyan-palette,
+        tertiary: mat.$orange-palette,
+      ),
+      typography: (
+        plain-family: (
+          'Segoe UI',
+          'Inter',
+          system-ui,
+          -apple-system,
+          'Helvetica Neue',
+          Arial,
+          sans-serif,
+        ),
+        brand-family: (
+          'Bahnschrift',
+          'Segoe UI',
+          'Inter',
+          system-ui,
+          sans-serif,
+        ),
+      ),
+      density: 0,
+    )
+  );
+
+  @include mat.theme-overrides(
+    (
+      surface: #101827,
+      surface-dim: #0a0f1a,
+      surface-bright: #1b2740,
+      surface-container-lowest: #0a0f1a,
+      surface-container-low: #101827,
+      surface-container: #131d30,
+      surface-container-high: #172339,
+      surface-container-highest: #1b2740,
+      on-surface: #e8eef9,
+      on-surface-variant: #a3b3cc,
+      outline: #6f84a8,
+      outline-variant: #26334d,
+      background: #0a0f1a,
+      on-background: #e8eef9,
+      primary: #4fd1e8,
+      on-primary: #04141a,
+    )
+  );
+
+  --acts-bg: #0a0f1a;
+  --acts-surface: #101827;
+  --acts-surface-raised: #172339;
+  --acts-border: #26334d;
+  --acts-border-strong: #6f84a8;
+  --acts-text: #e8eef9;
+  --acts-text-muted: #a3b3cc;
+  --acts-accent: #4fd1e8;
+  --acts-accent-soft: rgb(79 209 232 / 14%);
+  --acts-on-accent: #04141a;
+  --acts-warn: #ffb454;
+  --acts-danger: #ff8a8a;
+  --acts-success: #6ee7a8;
+
+  --acts-space-1: 0.25rem;
+  --acts-space-2: 0.5rem;
+  --acts-space-3: 0.75rem;
+  --acts-space-4: 1rem;
+  --acts-space-6: 1.5rem;
+  --acts-space-8: 2.5rem;
+  --acts-radius: 0.5rem;
+
+  --acts-font-body:
+    'Segoe UI', 'Inter', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  --acts-font-display: 'Bahnschrift', 'Segoe UI', 'Inter', system-ui, sans-serif;
+  --acts-font-mono: 'Cascadia Mono', 'Consolas', ui-monospace, monospace;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--acts-bg);
+  color: var(--acts-text);
+  font-family: var(--acts-font-body);
+  font-size: 1rem;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--acts-font-display);
+  letter-spacing: 0.02em;
+  margin: 0 0 var(--acts-space-4);
+}
+
+h1 {
+  font-size: 1.75rem;
+  font-weight: 600;
+}
+
+a {
+  color: var(--acts-accent);
+}
+
+:focus-visible {
+  outline: 2px solid var(--acts-accent);
+  outline-offset: 2px;
+}
+
+.material-icons {
+  font-family: 'Material Icons';
+  font-weight: normal;
+  font-style: normal;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-feature-settings: 'liga';
+  font-feature-settings: 'liga';
+}
+
+.acts-muted {
+  color: var(--acts-text-muted);
+}
+
+.acts-panel {
+  background: var(--acts-surface);
+  border: 1px solid var(--acts-border);
+  border-radius: calc(var(--acts-radius) * 1.5);
+  box-shadow: 0 1px 0 rgb(255 255 255 / 3%) inset;
+}
+
+// Write actions that need an actor name (see ActorRequiredDirective).
+.acts-actor-blocked {
+  cursor: not-allowed;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

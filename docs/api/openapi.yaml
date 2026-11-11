@@ -1,0 +1,774 @@
+openapi: 3.0.3
+info:
+  title: Stargate ACTS API
+  version: 1.0.0
+  description: |
+    Astronaut Career Tracking System (ACTS) API, contract v1.
+
+    This file is the only coupling between the API lane and the UI lane. The API is implemented to match it
+    and the UI client and mock API are generated from it.
+
+    ## Conventions
+
+    - **Envelope.** Every response body, success or error, contains `success`, `message` and `responseCode`.
+      `responseCode` always equals the HTTP status code. Error responses may add `errors`, a list of
+      `{ field, message }` entries for validation problems. There is no RFC 9457 problem-details body.
+    - **JSON.** Property names are camelCase. Dates are date-only strings in the form `yyyy-MM-dd` (no time, no zone).
+    - **Names.** A person name is trimmed, required and at most 200 characters. Uniqueness is case-insensitive
+      (`Ann` and `ann` are the same name). Names in paths are URL-encoded and matched case-insensitively after trimming.
+    - **Actor.** Every write route (`POST /Person`, `PUT /Person/{name}`, `POST /AstronautDuty`) requires the header
+      `X-Actor` (trimmed, 1 to 100 characters). A missing or blank value gives 400 with a field error on `X-Actor`.
+      The value is self-declared and unverified until login exists (a later, optional story). The API reads it only
+      through an `IActorProvider`, so authentication can replace it without changing routes or bodies.
+    - **Order of checks on a write route.** (1) header and body validation, 400; (2) the person must exist, 404;
+      (3) conflicts, 409; (4) rules that depend on the person's duty history, 400 with a field error.
+    - **Unknown person.** 404 on every route that takes a person name, including `POST /AstronautDuty`.
+
+    ## Duty rules
+
+    - `rank` and `dutyTitle` are required, trimmed and at most 100 characters. `RETIRED` as a duty title is matched
+      case-insensitively.
+    - `reason` is at most 500 characters. It is **required** (non-blank) when the new duty is
+      dated in the future (after today, UTC), dated before the person's latest duty start (a backdated correction),
+      or added while the person's latest duty is `RETIRED` (return from retirement). If it is required and missing the
+      response is 400 with a field error on `reason`.
+    - A new duty with the same start date as an existing duty of the same person is 409.
+    - Adding a duty ends the preceding duty the day before the new start date. When a duty is backdated, the end dates
+      of the neighbouring duties are re-chained so the timeline stays gap-free and non-overlapping.
+    - `careerStartDate` is the start of the person's first duty. When the person is retired, `careerEndDate` is the day
+      before the `RETIRED` duty starts. A person with no duty has `astronautStatus` `None` and no current rank, title or
+      career dates.
+
+    ## Contract change policy
+
+    Lanes may not edit this file inside a story. A change to the contract is made only by a dedicated contract-change
+    pull request that the project owner approves. Implementation stories change the code to match this file, never the
+    other way round.
+  license:
+    name: GPL-3.0-only
+    url: https://www.gnu.org/licenses/gpl-3.0.html
+servers:
+  - url: http://localhost:5204
+    description: Local development (HTTP)
+  - url: https://localhost:7204
+    description: Local development (HTTPS)
+security: []
+tags:
+  - name: Person
+    description: People tracked by the system.
+  - name: AstronautDuty
+    description: The duty timeline of a person.
+paths:
+  /Person:
+    get:
+      tags: [Person]
+      operationId: getPeople
+      summary: List all people
+      description: Returns every person with their current astronaut summary.
+      responses:
+        '200':
+          description: All people, possibly an empty list.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonListResponse'
+              examples:
+                people:
+                  $ref: '#/components/examples/PersonListOk'
+                empty:
+                  $ref: '#/components/examples/PersonListEmpty'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    post:
+      tags: [Person]
+      operationId: createPerson
+      summary: Add a person
+      description: |
+        Creates a person with no duties (`astronautStatus` `None`). The body is an object, not a bare string.
+        The name is trimmed, 1 to 200 characters, and must not already exist (case-insensitive).
+      parameters:
+        - $ref: '#/components/parameters/XActor'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePersonRequest'
+            example:
+              name: John Doe
+      responses:
+        '201':
+          description: The person was created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreatedResponse'
+              examples:
+                created:
+                  $ref: '#/components/examples/PersonCreated'
+        '400':
+          description: The body or the `X-Actor` header is invalid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                missingActor:
+                  $ref: '#/components/examples/MissingActor'
+                blankName:
+                  $ref: '#/components/examples/BlankName'
+                nameTooLong:
+                  $ref: '#/components/examples/NameTooLong'
+        '409':
+          description: A person with this name already exists (case-insensitive).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                duplicateName:
+                  $ref: '#/components/examples/DuplicateName'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /Person/{name}:
+    get:
+      tags: [Person]
+      operationId: getPersonByName
+      summary: Get one person
+      parameters:
+        - $ref: '#/components/parameters/PersonName'
+      responses:
+        '200':
+          description: The person.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonResponse'
+              examples:
+                active:
+                  $ref: '#/components/examples/PersonActive'
+                notAstronaut:
+                  $ref: '#/components/examples/PersonNone'
+        '404':
+          $ref: '#/components/responses/PersonNotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    put:
+      tags: [Person]
+      operationId: renamePerson
+      summary: Rename a person
+      description: |
+        Changes the name of the person identified by the path. `newName` follows the same rules as the name on
+        `POST /Person`. It must not belong to a different person (case-insensitive), but a change of letter case
+        or surrounding whitespace on the person's own name is allowed. Duties and their history are kept.
+      parameters:
+        - $ref: '#/components/parameters/PersonName'
+        - $ref: '#/components/parameters/XActor'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RenamePersonRequest'
+            example:
+              newName: Johnathan Doe
+      responses:
+        '200':
+          description: The person was renamed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BaseResponse'
+              examples:
+                renamed:
+                  $ref: '#/components/examples/Ok'
+        '400':
+          description: The body or the `X-Actor` header is invalid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                missingActor:
+                  $ref: '#/components/examples/MissingActor'
+                blankNewName:
+                  $ref: '#/components/examples/BlankNewName'
+        '404':
+          $ref: '#/components/responses/PersonNotFound'
+        '409':
+          description: Another person already has `newName` (case-insensitive).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                newNameTaken:
+                  $ref: '#/components/examples/NewNameTaken'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /AstronautDuty/{name}:
+    get:
+      tags: [AstronautDuty]
+      operationId: getAstronautDutiesByName
+      summary: Get a person with their duty timeline
+      description: Duties are ordered newest start date first. A person with no duty has an empty list.
+      parameters:
+        - $ref: '#/components/parameters/PersonName'
+      responses:
+        '200':
+          description: The person and their duties.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AstronautDutiesResponse'
+              examples:
+                timeline:
+                  $ref: '#/components/examples/DutiesOk'
+                noDuties:
+                  $ref: '#/components/examples/DutiesEmpty'
+        '404':
+          $ref: '#/components/responses/PersonNotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /AstronautDuty:
+    post:
+      tags: [AstronautDuty]
+      operationId: createAstronautDuty
+      summary: Add a duty to a person
+      description: |
+        Appends a duty to the person's timeline according to the duty rules in the API description.
+        `reason` is required when the start date is in the future, before the person's latest duty start,
+        or when the person is currently retired.
+      parameters:
+        - $ref: '#/components/parameters/XActor'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAstronautDutyRequest'
+            examples:
+              firstDuty:
+                summary: A duty that needs no reason
+                value:
+                  name: John Doe
+                  rank: 1LT
+                  dutyTitle: Commander
+                  dutyStartDate: '2020-01-15'
+              backdated:
+                summary: A backdated correction with its reason
+                value:
+                  name: John Doe
+                  rank: 1LT
+                  dutyTitle: Pilot
+                  dutyStartDate: '2019-06-01'
+                  reason: Start date was recorded wrongly.
+      responses:
+        '201':
+          description: The duty was added.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreatedResponse'
+              examples:
+                created:
+                  $ref: '#/components/examples/DutyCreated'
+        '400':
+          description: The body, the `X-Actor` header or the reason rule is invalid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                missingActor:
+                  $ref: '#/components/examples/MissingActor'
+                missingFields:
+                  $ref: '#/components/examples/DutyMissingFields'
+                futureWithoutReason:
+                  $ref: '#/components/examples/FutureWithoutReason'
+                backdatedWithoutReason:
+                  $ref: '#/components/examples/BackdatedWithoutReason'
+                returnFromRetirementWithoutReason:
+                  $ref: '#/components/examples/ReturnWithoutReason'
+        '404':
+          $ref: '#/components/responses/PersonNotFound'
+        '409':
+          description: The person already has a duty starting on this date.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                sameStartDate:
+                  $ref: '#/components/examples/DutySameStartDate'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+components:
+  parameters:
+    PersonName:
+      name: name
+      in: path
+      required: true
+      description: Name of the person. URL-encoded, trimmed, matched case-insensitively.
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 200
+      example: John Doe
+    XActor:
+      name: X-Actor
+      in: header
+      required: true
+      description: |
+        Who is making the change. Self-declared and unverified until login exists. Trimmed, 1 to 100 characters.
+        Stored on the audit trail and log entries.
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 100
+      example: flight.director
+  responses:
+    PersonNotFound:
+      description: No person has this name.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            notFound:
+              $ref: '#/components/examples/PersonNotFound'
+    InternalServerError:
+      description: Unexpected server error. The message is generic and never contains internals.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            serverError:
+              $ref: '#/components/examples/ServerError'
+  schemas:
+    BaseResponse:
+      type: object
+      description: Envelope present in every response body.
+      required: [success, message, responseCode]
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        responseCode:
+          type: integer
+          description: Always equal to the HTTP status code.
+          example: 200
+    FieldError:
+      type: object
+      required: [field, message]
+      properties:
+        field:
+          type: string
+          description: Name of the offending body property, or `X-Actor` for the header.
+          example: name
+        message:
+          type: string
+          example: The name is required.
+    ErrorResponse:
+      allOf:
+        - $ref: '#/components/schemas/BaseResponse'
+        - type: object
+          properties:
+            errors:
+              type: array
+              description: Present on validation errors, one entry per invalid field.
+              items:
+                $ref: '#/components/schemas/FieldError'
+    CreatedResponse:
+      allOf:
+        - $ref: '#/components/schemas/BaseResponse'
+        - type: object
+          required: [id]
+          properties:
+            id:
+              type: integer
+              description: Identifier of the created person or duty.
+              example: 1
+    AstronautStatus:
+      type: string
+      description: |
+        `None` when the person has no duty, `Active` when the latest duty is not `RETIRED`,
+        `Retired` when the latest duty is `RETIRED`.
+      enum: [None, Active, Retired]
+    PersonAstronaut:
+      type: object
+      required: [personId, name, astronautStatus]
+      properties:
+        personId:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: John Doe
+        currentRank:
+          type: string
+          nullable: true
+          example: 1LT
+        currentDutyTitle:
+          type: string
+          nullable: true
+          example: Commander
+        careerStartDate:
+          type: string
+          format: date
+          nullable: true
+          example: '2020-01-15'
+        careerEndDate:
+          type: string
+          format: date
+          nullable: true
+          example: null
+        astronautStatus:
+          $ref: '#/components/schemas/AstronautStatus'
+    AstronautDuty:
+      type: object
+      required: [id, personId, rank, dutyTitle, dutyStartDate]
+      properties:
+        id:
+          type: integer
+          example: 2
+        personId:
+          type: integer
+          example: 1
+        rank:
+          type: string
+          example: 1LT
+        dutyTitle:
+          type: string
+          example: Commander
+        dutyStartDate:
+          type: string
+          format: date
+          example: '2020-01-15'
+        dutyEndDate:
+          type: string
+          format: date
+          nullable: true
+          description: The day before the next duty starts. Null for the latest duty.
+          example: null
+        reason:
+          type: string
+          nullable: true
+          maxLength: 500
+          description: Why the duty was entered out of the normal order. Null when no reason was needed.
+          example: null
+    PersonListResponse:
+      allOf:
+        - $ref: '#/components/schemas/BaseResponse'
+        - type: object
+          required: [people]
+          properties:
+            people:
+              type: array
+              items:
+                $ref: '#/components/schemas/PersonAstronaut'
+    PersonResponse:
+      allOf:
+        - $ref: '#/components/schemas/BaseResponse'
+        - type: object
+          required: [person]
+          properties:
+            person:
+              $ref: '#/components/schemas/PersonAstronaut'
+    AstronautDutiesResponse:
+      allOf:
+        - $ref: '#/components/schemas/BaseResponse'
+        - type: object
+          required: [person, astronautDuties]
+          properties:
+            person:
+              $ref: '#/components/schemas/PersonAstronaut'
+            astronautDuties:
+              type: array
+              description: Newest start date first.
+              items:
+                $ref: '#/components/schemas/AstronautDuty'
+    CreatePersonRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+          description: Trimmed before validation and storage. Unique, case-insensitive.
+    RenamePersonRequest:
+      type: object
+      required: [newName]
+      properties:
+        newName:
+          type: string
+          minLength: 1
+          maxLength: 200
+          description: Trimmed before validation and storage. Unique, case-insensitive.
+    CreateAstronautDutyRequest:
+      type: object
+      required: [name, rank, dutyTitle, dutyStartDate]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+          description: Name of an existing person.
+        rank:
+          type: string
+          minLength: 1
+          maxLength: 100
+        dutyTitle:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: '`RETIRED` (any letter case) retires the person.'
+        dutyStartDate:
+          type: string
+          format: date
+        reason:
+          type: string
+          maxLength: 500
+          description: Required (non-blank) for a future start date, a backdated duty and a return from retirement.
+  examples:
+    Ok:
+      summary: Success with no payload
+      value:
+        success: true
+        message: Successful
+        responseCode: 200
+    PersonListOk:
+      summary: Three people in different states
+      value:
+        success: true
+        message: Successful
+        responseCode: 200
+        people:
+          - personId: 1
+            name: John Doe
+            currentRank: 1LT
+            currentDutyTitle: Commander
+            careerStartDate: '2020-01-15'
+            careerEndDate: null
+            astronautStatus: Active
+          - personId: 2
+            name: Jane Roe
+            currentRank: COL
+            currentDutyTitle: RETIRED
+            careerStartDate: '1998-03-02'
+            careerEndDate: '2019-12-31'
+            astronautStatus: Retired
+          - personId: 3
+            name: Richard Roe
+            currentRank: null
+            currentDutyTitle: null
+            careerStartDate: null
+            careerEndDate: null
+            astronautStatus: None
+    PersonListEmpty:
+      summary: No people yet
+      value:
+        success: true
+        message: Successful
+        responseCode: 200
+        people: []
+    PersonActive:
+      summary: An active astronaut
+      value:
+        success: true
+        message: Successful
+        responseCode: 200
+        person:
+          personId: 1
+          name: John Doe
+          currentRank: 1LT
+          currentDutyTitle: Commander
+          careerStartDate: '2020-01-15'
+          careerEndDate: null
+          astronautStatus: Active
+    PersonNone:
+      summary: A person who has no duty
+      value:
+        success: true
+        message: Successful
+        responseCode: 200
+        person:
+          personId: 3
+          name: Richard Roe
+          currentRank: null
+          currentDutyTitle: null
+          careerStartDate: null
+          careerEndDate: null
+          astronautStatus: None
+    PersonCreated:
+      summary: Person created
+      value:
+        success: true
+        message: Successful
+        responseCode: 201
+        id: 4
+    DutyCreated:
+      summary: Duty created
+      value:
+        success: true
+        message: Successful
+        responseCode: 201
+        id: 7
+    DutiesOk:
+      summary: A timeline, newest start date first
+      value:
+        success: true
+        message: Successful
+        responseCode: 200
+        person:
+          personId: 1
+          name: John Doe
+          currentRank: CPT
+          currentDutyTitle: Commander
+          careerStartDate: '2020-01-15'
+          careerEndDate: null
+          astronautStatus: Active
+        astronautDuties:
+          - id: 3
+            personId: 1
+            rank: CPT
+            dutyTitle: Commander
+            dutyStartDate: '2023-05-01'
+            dutyEndDate: null
+            reason: null
+          - id: 2
+            personId: 1
+            rank: 1LT
+            dutyTitle: Pilot
+            dutyStartDate: '2021-09-10'
+            dutyEndDate: '2023-04-30'
+            reason: null
+          - id: 1
+            personId: 1
+            rank: 1LT
+            dutyTitle: Mission Specialist
+            dutyStartDate: '2020-01-15'
+            dutyEndDate: '2021-09-09'
+            reason: null
+    DutiesEmpty:
+      summary: A person who has no duty yet
+      value:
+        success: true
+        message: Successful
+        responseCode: 200
+        person:
+          personId: 3
+          name: Richard Roe
+          currentRank: null
+          currentDutyTitle: null
+          careerStartDate: null
+          careerEndDate: null
+          astronautStatus: None
+        astronautDuties: []
+    PersonNotFound:
+      summary: Unknown person
+      value:
+        success: false
+        message: Person not found.
+        responseCode: 404
+    ServerError:
+      summary: Unexpected failure
+      value:
+        success: false
+        message: An unexpected error occurred.
+        responseCode: 500
+    MissingActor:
+      summary: X-Actor header missing or blank
+      value:
+        success: false
+        message: Validation failed.
+        responseCode: 400
+        errors:
+          - field: X-Actor
+            message: The X-Actor header is required.
+    BlankName:
+      summary: Name missing or blank
+      value:
+        success: false
+        message: Validation failed.
+        responseCode: 400
+        errors:
+          - field: name
+            message: The name is required.
+    NameTooLong:
+      summary: Name longer than 200 characters
+      value:
+        success: false
+        message: Validation failed.
+        responseCode: 400
+        errors:
+          - field: name
+            message: The name must be at most 200 characters.
+    BlankNewName:
+      summary: New name missing or blank
+      value:
+        success: false
+        message: Validation failed.
+        responseCode: 400
+        errors:
+          - field: newName
+            message: The new name is required.
+    DuplicateName:
+      summary: Name already used
+      value:
+        success: false
+        message: A person with this name already exists.
+        responseCode: 409
+    NewNameTaken:
+      summary: New name already used by another person
+      value:
+        success: false
+        message: A person with this name already exists.
+        responseCode: 409
+    DutyMissingFields:
+      summary: Required fields missing
+      value:
+        success: false
+        message: Validation failed.
+        responseCode: 400
+        errors:
+          - field: rank
+            message: The rank is required.
+          - field: dutyStartDate
+            message: The duty start date must be a date in the form yyyy-MM-dd.
+    FutureWithoutReason:
+      summary: Future start date without a reason
+      value:
+        success: false
+        message: Validation failed.
+        responseCode: 400
+        errors:
+          - field: reason
+            message: A reason is required when the duty starts in the future.
+    BackdatedWithoutReason:
+      summary: Start date before the latest duty, without a reason
+      value:
+        success: false
+        message: Validation failed.
+        responseCode: 400
+        errors:
+          - field: reason
+            message: A reason is required when the duty starts before the person's latest duty.
+    ReturnWithoutReason:
+      summary: Duty added after RETIRED, without a reason
+      value:
+        success: false
+        message: Validation failed.
+        responseCode: 400
+        errors:
+          - field: reason
+            message: A reason is required to add a duty after the person has retired.
+    DutySameStartDate:
+      summary: The person already has a duty on this start date
+      value:
+        success: false
+        message: The person already has a duty starting on this date.
+        responseCode: 409

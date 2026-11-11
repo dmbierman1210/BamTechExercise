@@ -20,9 +20,15 @@ info:
       `X-Actor` (trimmed, 1 to 100 characters). A missing or blank value gives 400 with a field error on `X-Actor`.
       The value is self-declared and unverified until login exists (a later, optional story). The API reads it only
       through an `IActorProvider`, so authentication can replace it without changing routes or bodies.
-    - **Order of checks on a write route.** (1) header and body validation, 400; (2) the person must exist, 404;
-      (3) conflicts, 409; (4) rules that depend on the person's duty history, 400 with a field error.
+    - **Order of checks on a write route.** (1) header and body validation, including the rule that a start date after
+      today needs a `reason`, which depends only on the request: 400; (2) the person must exist: 404; (3) conflicts:
+      409; (4) rules that depend on the person's duty history (backdating, return from retirement): 400 with a field
+      error.
+    - **Malformed requests.** A missing, malformed or non-JSON body is a 400 in the same envelope, with an `errors`
+      entry where the field is known. The framework's own problem-details bodies are never returned.
     - **Unknown person.** 404 on every route that takes a person name, including `POST /AstronautDuty`.
+    - **Latest duty.** The latest duty is the one with the latest start date, even when that date is in the future.
+      `currentRank`, `currentDutyTitle` and `astronautStatus` are derived from it.
 
     ## Duty rules
 
@@ -31,7 +37,8 @@ info:
     - `reason` is at most 500 characters. It is **required** (non-blank) when the new duty is
       dated in the future (after today, UTC), dated before the person's latest duty start (a backdated correction),
       or added while the person's latest duty is `RETIRED` (return from retirement). If it is required and missing the
-      response is 400 with a field error on `reason`.
+      response is 400 with a field error on `reason`. A `reason` that is supplied but not needed is stored as given
+      (trimmed; blank is stored as null).
     - A new duty with the same start date as an existing duty of the same person is 409.
     - Adding a duty ends the preceding duty the day before the new start date. When a duty is backdated, the end dates
       of the neighbouring duties are re-chained so the timeline stays gap-free and non-overlapping.
@@ -45,7 +52,7 @@ info:
     pull request that the project owner approves. Implementation stories change the code to match this file, never the
     other way round.
   license:
-    name: GPL-3.0-only
+    name: GNU General Public License v3.0
     url: https://www.gnu.org/licenses/gpl-3.0.html
 servers:
   - url: http://localhost:5204
@@ -309,23 +316,20 @@ components:
       name: name
       in: path
       required: true
-      description: Name of the person. URL-encoded, trimmed, matched case-insensitively.
+      description: Name of the person. URL-encoded, trimmed, matched case-insensitively. Never longer than 200 characters.
       schema:
         type: string
-        minLength: 1
-        maxLength: 200
       example: John Doe
     XActor:
       name: X-Actor
       in: header
       required: true
       description: |
-        Who is making the change. Self-declared and unverified until login exists. Trimmed, 1 to 100 characters.
+        Who is making the change. Self-declared and unverified until login exists. Trimmed, 1 to 100 characters;
+        a missing, blank or longer value is a 400 with a field error on `X-Actor`.
         Stored on the audit trail and log entries.
       schema:
         type: string
-        minLength: 1
-        maxLength: 100
       example: flight.director
   responses:
     PersonNotFound:
@@ -531,6 +535,7 @@ components:
           format: date
         reason:
           type: string
+          nullable: true
           maxLength: 500
           description: Required (non-blank) for a future start date, a backdated duty and a return from retirement.
   examples:
@@ -549,7 +554,7 @@ components:
         people:
           - personId: 1
             name: John Doe
-            currentRank: 1LT
+            currentRank: CPT
             currentDutyTitle: Commander
             careerStartDate: '2020-01-15'
             careerEndDate: null
@@ -584,7 +589,7 @@ components:
         person:
           personId: 1
           name: John Doe
-          currentRank: 1LT
+          currentRank: CPT
           currentDutyTitle: Commander
           careerStartDate: '2020-01-15'
           careerEndDate: null
@@ -645,7 +650,7 @@ components:
             dutyTitle: Pilot
             dutyStartDate: '2021-09-10'
             dutyEndDate: '2023-04-30'
-            reason: null
+            reason: Start date was recorded wrongly and corrected.
           - id: 1
             personId: 1
             rank: 1LT

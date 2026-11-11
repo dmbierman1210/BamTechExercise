@@ -1,0 +1,13 @@
+bin/
+obj/
+*.db
+*.db-shm
+*.db-wal
+node_modules/
+dist/
+.angular/
+coverage/
+TestResults/
+*.user
+.vs/
+.vscode/

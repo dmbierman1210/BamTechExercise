@@ -1,0 +1,98 @@
+<form
+  class="duty acts-panel"
+  [formGroup]="form"
+  aria-label="Add duty"
+  (ngSubmit)="submit()"
+  (keydown.escape)="cancelled.emit()"
+>
+  <div class="fields">
+    <mat-form-field subscriptSizing="dynamic">
+      <mat-label>Rank</mat-label>
+      <input matInput formControlName="rank" autocomplete="off" required />
+      <mat-hint>Up to {{ textMax }} characters</mat-hint>
+      @if (errorOf(rank, 'The rank'); as message) {
+        <mat-error>{{ message }}</mat-error>
+      }
+    </mat-form-field>
+
+    <div class="title-group">
+      <mat-form-field subscriptSizing="dynamic">
+        <mat-label>Duty title</mat-label>
+        <input matInput formControlName="dutyTitle" autocomplete="off" required />
+        <mat-hint>Up to {{ textMax }} characters</mat-hint>
+        @if (errorOf(dutyTitle, 'The duty title'); as message) {
+          <mat-error>{{ message }}</mat-error>
+        }
+      </mat-form-field>
+      <div class="quick-pick">
+        <span class="acts-muted">Quick pick</span>
+        <button
+          mat-stroked-button
+          type="button"
+          class="retired-pick"
+          aria-label="Use RETIRED as the duty title"
+          (click)="pickRetired()"
+        >
+          <mat-icon aria-hidden="true">military_tech</mat-icon>
+          RETIRED
+        </button>
+      </div>
+    </div>
+
+    <mat-form-field subscriptSizing="dynamic">
+      <mat-label>Start date</mat-label>
+      <input matInput type="date" formControlName="dutyStartDate" required />
+      <mat-hint>Today and the future are judged in UTC</mat-hint>
+      @if (errorOf(dutyStartDate, 'The start date'); as message) {
+        <mat-error>{{ message }}</mat-error>
+      }
+    </mat-form-field>
+  </div>
+
+  <div class="banner-slot" aria-live="polite">
+    @if (requirement(); as need) {
+      <div
+        class="banner banner-{{ need.kind }}"
+        role="region"
+        aria-labelledby="reason-banner-title"
+      >
+        <mat-icon aria-hidden="true">{{ need.icon }}</mat-icon>
+        <div>
+          <p id="reason-banner-title" class="banner-title">{{ need.title }}</p>
+          <p class="banner-text">{{ need.message }}</p>
+        </div>
+      </div>
+    }
+  </div>
+
+  <mat-form-field class="reason-field" subscriptSizing="dynamic">
+    <mat-label>Reason {{ requirement() ? '(required)' : '(optional)' }}</mat-label>
+    <textarea
+      matInput
+      formControlName="reason"
+      rows="3"
+      [attr.aria-required]="requirement() ? 'true' : null"
+    ></textarea>
+    <mat-hint align="end">{{ reason.value.trim().length }} / {{ reasonMax }}</mat-hint>
+    @if (errorOf(reason, 'The reason'); as message) {
+      <mat-error>{{ message }}</mat-error>
+    }
+  </mat-form-field>
+
+  @if (formError(); as message) {
+    <app-form-alert [message]="message" (dismissed)="formError.set(null)" />
+  }
+  <app-actor-hint id="add-duty-submit-hint" />
+  <div class="actions">
+    <button
+      mat-flat-button
+      type="submit"
+      appActorRequired="add-duty-submit-hint"
+      [actorBusy]="pending()"
+    >
+      <mat-icon aria-hidden="true">rocket_launch</mat-icon>
+      {{ pending() ? 'Adding…' : 'Add duty' }}
+    </button>
+    <button mat-button type="button" (click)="cancelled.emit()">Cancel</button>
+  </div>
+</form>

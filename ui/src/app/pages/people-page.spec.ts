@@ -218,7 +218,7 @@ describe('PeoplePage', () => {
   });
 
   describe('empty state', () => {
-    it('says "No people yet" and offers a disabled-but-discoverable Add person placeholder', async () => {
+    it('says "No people yet" and offers an Add person button that is blocked, with its hint, until an actor is set', async () => {
       await open('/people', []);
       expect(el.querySelector('h2')?.textContent).toContain('No people yet');
       expect(el.querySelector('.cards')).toBeNull();
@@ -232,12 +232,13 @@ describe('PeoplePage', () => {
       expect(hint.textContent).toContain(TestBed.inject(ActorService).hint);
     });
 
-    it('keeps the placeholder disabled with a different hint once a name is set', async () => {
+    it('offers a working Add person button, and no hint, once a name is set', async () => {
       TestBed.inject(ActorService).setActor('Ada');
       await open('/people', []);
       const add = el.querySelector<HTMLButtonElement>('.notice button')!;
-      expect(add.getAttribute('aria-disabled')).toBe('true');
-      expect(el.querySelector('.hint')?.textContent).toContain('not available yet');
+      expect(add.getAttribute('aria-disabled')).toBeNull();
+      expect(add.getAttribute('aria-describedby')).toBeNull();
+      expect(el.querySelector('app-actor-hint')?.textContent?.trim()).toBe('');
     });
   });
 

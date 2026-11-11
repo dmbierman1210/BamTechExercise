@@ -45,6 +45,13 @@
   }
 }
 
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--acts-space-2);
+  margin-left: auto;
+}
+
 .facts {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));

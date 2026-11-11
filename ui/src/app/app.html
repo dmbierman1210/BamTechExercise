@@ -1,4 +1,6 @@
-<a class="skip-link" href="#main" (click)="$event.preventDefault(); mainContent.focus()">Skip to content</a>
+<a class="skip-link" href="#main" (click)="$event.preventDefault(); mainContent.focus()"
+  >Skip to content</a
+>
 
 <mat-sidenav-container class="shell">
   <mat-sidenav class="shell-nav" mode="over" aria-label="Main navigation">
@@ -55,8 +57,14 @@
       <app-acting-as />
     </mat-toolbar>
 
+    <app-connection-banner />
+
     <main #mainContent id="main" class="shell-main" tabindex="-1">
       <router-outlet />
     </main>
   </mat-sidenav-content>
 </mat-sidenav-container>
+
+<div class="visually-hidden" role="status" aria-live="polite" aria-atomic="true">
+  {{ announcer.message() }}
+</div>

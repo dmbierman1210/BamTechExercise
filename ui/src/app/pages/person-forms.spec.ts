@@ -7,6 +7,7 @@ import { errorInterceptor } from '../api/error.interceptor';
 import type { AstronautDuty, PersonAstronaut } from '../api/models';
 import { actorInterceptor } from '../core/actor.interceptor';
 import { ActorService } from '../core/actor.service';
+import { StatusAnnouncer } from '../core/status-announcer';
 import { todayUtcIsoDate } from '../shared/dates';
 import { PeoplePage } from './people-page';
 import { PersonPage } from './person-page';
@@ -180,7 +181,9 @@ describe('Person page write forms (rename and add duty)', () => {
       submit().click();
       await settle();
       expect(controller.match((r) => r.method === 'PUT')).toHaveLength(0);
-      expect(el.querySelector('form [role="status"]')?.textContent).toContain('already');
+      expect(el.querySelector('form [role="status"]')).toBeNull();
+      expect(el.querySelector('.unchanged')?.textContent).toContain('already');
+      expect(TestBed.inject(StatusAnnouncer).message()).toContain('already this person');
     });
 
     it.each([
@@ -320,6 +323,28 @@ describe('Person page write forms (rename and add duty)', () => {
       await settle();
       expect(el.querySelector('form')).toBeNull();
       expect(document.activeElement).toBe(button('Rename'));
+    });
+
+    it('closes on Escape while nothing was typed, but keeps typed text and explains how to discard it', async () => {
+      await openRename();
+      const form = () => el.querySelector('form')!;
+      form().dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+      await settle();
+      expect(el.querySelector('form')).toBeNull();
+
+      button('Rename').click();
+      await settle();
+      await fill('input[formControlName="newName"]', 'Jon Doe');
+      form().dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+      await settle();
+      expect(el.querySelector('form')).not.toBeNull();
+      expect(newName().value).toBe('Jon Doe');
+      expect(el.querySelector('.acts-discard-hint')?.textContent).toContain('unsaved changes');
+      expect(TestBed.inject(StatusAnnouncer).message()).toContain('unsaved changes');
+
+      button('Cancel').click();
+      await settle();
+      expect(el.querySelector('form')).toBeNull();
     });
 
     it('cannot be closed while the request is in flight, so a success is never lost', async () => {
@@ -661,6 +686,63 @@ describe('Person page write forms (rename and add duty)', () => {
       await settle();
       expect(el.querySelector('form')).toBeNull();
       expect(document.activeElement).toBe(button('Add duty'));
+    });
+
+    it('does not discard typed text on Escape: it keeps the form, says so and Cancel still closes', async () => {
+      await openDuty();
+      await fill('textarea[formControlName="reason"]', 'Long explanation I do not want to lose');
+      const reason = field('textarea[formControlName="reason"]');
+      reason.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      await settle();
+      expect(el.querySelector('form')).not.toBeNull();
+      expect(field('textarea[formControlName="reason"]').value).toBe(
+        'Long explanation I do not want to lose',
+      );
+      expect(el.querySelector('.acts-discard-hint')?.textContent).toContain('Cancel');
+      expect(TestBed.inject(StatusAnnouncer).message()).toContain('unsaved changes');
+
+      await fill('textarea[formControlName="reason"]', 'Long explanation I do not want to lose!');
+      expect(el.querySelector('.acts-discard-hint')).toBeNull();
+
+      button('Cancel').click();
+      await settle();
+      expect(el.querySelector('form')).toBeNull();
+    });
+
+    it('sends nothing when Enter or Space activates the blocked submit (no actor name)', async () => {
+      await openDuty();
+      await setRank('CPT');
+      await setTitle('Pilot');
+      TestBed.inject(ActorService).clearActor();
+      await settle();
+      const blocked = submit();
+      expect(blocked.getAttribute('aria-disabled')).toBe('true');
+      blocked.focus();
+      // A browser turns Enter or Space on a focused button, and Enter inside a field, into a click on the submit button.
+      for (const key of ['Enter', ' ']) {
+        blocked.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true }));
+        blocked.click();
+      }
+      field('input[formControlName="rank"]').dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }),
+      );
+      blocked.click();
+      await settle();
+      expect(controller.match((r) => r.method === 'POST')).toHaveLength(0);
+      expect(document.activeElement).toBe(blocked);
+      expect(el.querySelector('form')).not.toBeNull();
+    });
+
+    it('announces how many fields need attention when the submit is rejected', async () => {
+      await openDuty();
+      submit().click();
+      await settle();
+      expect(TestBed.inject(StatusAnnouncer).message()).toBe(
+        'Cannot add the duty: 2 fields need attention.',
+      );
+      expect(
+        el.querySelector('.mat-mdc-form-field-subscript-wrapper')?.getAttribute('aria-live'),
+      ).toBe('polite');
     });
   });
 });

@@ -6,6 +6,7 @@ import { RouterTestingHarness } from '@angular/router/testing';
 import { errorInterceptor } from '../api/error.interceptor';
 import type { PersonAstronaut } from '../api/models';
 import { ActorService } from '../core/actor.service';
+import { StatusAnnouncer } from '../core/status-announcer';
 import { PeopleListState } from './people-list-state';
 import { PeoplePage } from './people-page';
 import { PersonPage } from './person-page';
@@ -124,9 +125,11 @@ describe('PeoplePage', () => {
   it('shows a loading skeleton, then renders a card per person from the fixture', async () => {
     await open('/people', null);
     expect(el.querySelectorAll('.skeleton').length).toBeGreaterThan(0);
-    expect(el.querySelector('[role="status"]')?.textContent).toContain('Loading');
+    expect(TestBed.inject(StatusAnnouncer).message()).toContain('Loading people');
+    expect(el.querySelector('[role="status"]')).toBeNull();
     respond(FIXTURE);
     await settle();
+    expect(TestBed.inject(StatusAnnouncer).message()).toBe('Showing 3 of 3 people.');
 
     expect(el.querySelector('.skeleton')).toBeNull();
     expect(names()).toEqual(['jane roe', 'John Doe', 'Richard Roe']);

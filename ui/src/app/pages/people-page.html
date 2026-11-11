@@ -1,5 +1,5 @@
 <section
-  class="page"
+  class="page acts-page"
   aria-labelledby="people-heading"
   [attr.aria-busy]="state().kind === 'loading'"
 >
@@ -22,33 +22,28 @@
 
   @switch (state().kind) {
     @case ('loading') {
-      <p class="visually-hidden" role="status">Loading people…</p>
       <ul class="cards" aria-hidden="true">
         @for (row of skeletonRows; track row) {
           <li class="card skeleton">
-            <span class="bar bar-name"></span>
-            <span class="bar"></span>
-            <span class="bar bar-short"></span>
+            <span class="acts-skeleton-bar bar-name"></span>
+            <span class="acts-skeleton-bar"></span>
+            <span class="acts-skeleton-bar bar-short"></span>
           </li>
         }
       </ul>
     }
     @case ('error') {
-      <div class="acts-panel notice" role="alert">
-        <mat-icon class="notice-icon danger" aria-hidden="true">error</mat-icon>
-        <h2>Could not load people</h2>
+      <app-state-notice illustration="error" heading="Could not load people" [alert]="true">
         <p class="message">{{ errorMessage() }}</p>
         <button mat-flat-button type="button" (click)="load(); heading.focus()">
           <mat-icon aria-hidden="true">refresh</mat-icon>
           Retry
         </button>
-      </div>
+      </app-state-notice>
     }
     @case ('loaded') {
       @if (all().length === 0) {
-        <div class="acts-panel notice">
-          <mat-icon class="notice-icon" aria-hidden="true">groups</mat-icon>
-          <h2>No people yet</h2>
+        <app-state-notice illustration="people" heading="No people yet">
           <p class="acts-muted">Everyone known to ACTS will be listed here.</p>
           <button
             mat-flat-button
@@ -61,7 +56,7 @@
             Add person
           </button>
           <app-actor-hint id="add-person-hint" />
-        </div>
+        </app-state-notice>
       } @else {
         <form
           class="controls"
@@ -103,22 +98,20 @@
           </mat-form-field>
         </form>
 
-        <p class="count acts-muted" role="status">
+        <p class="count acts-muted">
           Showing {{ visible().length }} of {{ all().length }}
           {{ all().length === 1 ? 'person' : 'people' }}
         </p>
 
         @if (visible().length === 0) {
-          <div class="acts-panel notice">
-            <mat-icon class="notice-icon" aria-hidden="true">search_off</mat-icon>
-            <h2>No matches</h2>
+          <app-state-notice illustration="search" heading="No matches">
             <p class="acts-muted">No one matches the current search and status filter.</p>
             @if (filtering()) {
               <button mat-stroked-button type="button" (click)="clearFilters(); search.focus()">
                 Clear search and filter
               </button>
             }
-          </div>
+          </app-state-notice>
         } @else {
           <ul class="cards" aria-label="People">
             @for (person of visible(); track person.personId) {

@@ -3,7 +3,7 @@
   [formGroup]="form"
   aria-label="Add duty"
   (ngSubmit)="submit()"
-  (keydown.escape)="cancel()"
+  (keydown.escape)="escape()"
 >
   <div class="fields">
     <mat-form-field subscriptSizing="dynamic">
@@ -81,6 +81,9 @@
 
   @if (formError(); as message) {
     <app-form-alert [message]="message" (dismissed)="formError.set(null)" />
+  }
+  @if (discardHint()) {
+    <p class="acts-discard-hint">{{ discardText }}</p>
   }
   <app-actor-hint id="add-duty-submit-hint" />
   <div class="actions">

@@ -5,6 +5,7 @@ import { Router, provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { errorInterceptor } from '../api/error.interceptor';
 import type { AstronautDuty, PersonAstronaut } from '../api/models';
+import { StatusAnnouncer } from '../core/status-announcer';
 import { formatDate } from '../shared/dates';
 import { PeopleListState } from './people-list-state';
 import { PeoplePage } from './people-page';
@@ -194,7 +195,9 @@ describe('PersonPage', () => {
       await open('/people/John%20Doe');
       expect(el.querySelector('section')?.getAttribute('aria-busy')).toBe('true');
       expect(el.querySelector('.skeleton-list')).not.toBeNull();
-      expect(text(el.querySelector('[role="status"]'))).toBe('Loading duties…');
+      expect(el.querySelector('[role="status"]')).toBeNull();
+      harness.detectChanges();
+      expect(TestBed.inject(StatusAnnouncer).message()).toBe('Loading duties…');
       expect(text(el.querySelector('h1'))).toBe('John Doe');
       dutiesRequest().flush({}, { status: 404, statusText: 'Not Found' });
       await settle();

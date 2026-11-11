@@ -49,7 +49,7 @@ import {
         <app-actor-hint id="add-person-submit-hint" />
       </mat-dialog-content>
       <mat-dialog-actions align="end">
-        <button mat-button type="button" mat-dialog-close>Cancel</button>
+        <button mat-button type="button" mat-dialog-close [disabled]="pending()">Cancel</button>
         <button
           mat-flat-button
           type="submit"
@@ -101,10 +101,12 @@ export class AddPersonDialog {
     }
     const name = this.name.value.trim();
     this.pending.set(true);
+    this.dialogRef.disableClose = true;
     this.people.createPerson({ name }).subscribe({
       next: () => this.dialogRef.close(name),
       error: (error: unknown) => {
         this.pending.set(false);
+        this.dialogRef.disableClose = false;
         this.formError.set(
           applyServerError(error, { fields: { name: this.name }, conflict: this.name }),
         );

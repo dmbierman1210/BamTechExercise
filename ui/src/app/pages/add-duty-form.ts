@@ -71,6 +71,8 @@ export class AddDutyForm {
   readonly history = input.required<readonly AstronautDuty[]>();
   readonly saved = output();
   readonly cancelled = output();
+  /** True while the request is in flight, so the parent does not close the form under it. */
+  readonly busy = output<boolean>();
 
   protected readonly textMax = TEXT_MAX;
   protected readonly reasonMax = REASON_MAX;
@@ -104,6 +106,7 @@ export class AddDutyForm {
   protected readonly formError = signal<string | null>(null);
 
   constructor() {
+    effect(() => this.busy.emit(this.pending()));
     // Rules that read the inputs are added here: the controls are created before the inputs are set.
     this.dutyStartDate.addValidators((control) => this.validateDate(control));
     this.reason.addValidators((control) => this.validateReason(control));
@@ -128,6 +131,12 @@ export class AddDutyForm {
     this.dutyTitle.markAsDirty();
     if (!this.rank.value.trim()) {
       this.rank.setValue(latestDuty(this.history())?.rank ?? this.person().currentRank ?? '');
+    }
+  }
+
+  protected cancel(): void {
+    if (!this.pending()) {
+      this.cancelled.emit();
     }
   }
 

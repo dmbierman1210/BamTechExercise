@@ -3,7 +3,7 @@
   [formGroup]="form"
   aria-label="Add duty"
   (ngSubmit)="submit()"
-  (keydown.escape)="cancelled.emit()"
+  (keydown.escape)="cancel()"
 >
   <div class="fields">
     <mat-form-field subscriptSizing="dynamic">
@@ -93,6 +93,6 @@
       <mat-icon aria-hidden="true">rocket_launch</mat-icon>
       {{ pending() ? 'Adding…' : 'Add duty' }}
     </button>
-    <button mat-button type="button" (click)="cancelled.emit()">Cancel</button>
+    <button mat-button type="button" (click)="cancel()">Cancel</button>
   </div>
 </form>

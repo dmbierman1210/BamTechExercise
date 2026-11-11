@@ -102,6 +102,7 @@
         [currentName]="p.name"
         (renamed)="onRenamed($event)"
         (cancelled)="closePanel()"
+        (busy)="writing.set($event)"
       />
     } @else if (panel() === 'duty') {
       <app-add-duty-form
@@ -109,6 +110,7 @@
         [history]="history()"
         (saved)="onDutySaved()"
         (cancelled)="closePanel()"
+        (busy)="writing.set($event)"
       />
     }
   }

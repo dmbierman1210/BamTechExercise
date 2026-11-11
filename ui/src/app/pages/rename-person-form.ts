@@ -4,6 +4,7 @@ import {
   ElementRef,
   type OnInit,
   afterNextRender,
+  effect,
   inject,
   input,
   output,
@@ -45,7 +46,7 @@ import {
       [formGroup]="form"
       aria-label="Rename person"
       (ngSubmit)="submit()"
-      (keydown.escape)="cancelled.emit()"
+      (keydown.escape)="cancel()"
     >
       <mat-form-field class="rename-field" subscriptSizing="dynamic">
         <mat-label>New name</mat-label>
@@ -73,7 +74,7 @@ import {
         >
           {{ pending() ? 'Renaming…' : 'Rename' }}
         </button>
-        <button mat-button type="button" (click)="cancelled.emit()">Cancel</button>
+        <button mat-button type="button" (click)="cancel()">Cancel</button>
       </div>
     </form>
   `,
@@ -119,6 +120,8 @@ export class RenamePersonForm implements OnInit {
   readonly currentName = input.required<string>();
   readonly renamed = output<string>();
   readonly cancelled = output();
+  /** True while the request is in flight, so the parent does not close the form under it. */
+  readonly busy = output<boolean>();
 
   protected readonly nameMax = NAME_MAX;
   protected readonly newName = new FormControl('', {
@@ -132,6 +135,7 @@ export class RenamePersonForm implements OnInit {
   protected readonly nameError = signal<string | null>(null);
 
   constructor() {
+    effect(() => this.busy.emit(this.pending()));
     this.newName.valueChanges.subscribe(() => this.unchanged.set(false));
     this.newName.statusChanges.subscribe(() => this.refreshError());
     afterNextRender(() => {
@@ -143,6 +147,12 @@ export class RenamePersonForm implements OnInit {
 
   ngOnInit(): void {
     this.newName.setValue(this.currentName());
+  }
+
+  protected cancel(): void {
+    if (!this.pending()) {
+      this.cancelled.emit();
+    }
   }
 
   protected submit(): void {

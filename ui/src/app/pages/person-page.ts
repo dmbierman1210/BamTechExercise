@@ -77,6 +77,8 @@ export class PersonPage {
   protected readonly state = signal<LoadState>({ kind: 'loading' });
   /** Which write form is open. */
   protected readonly panel = signal<Panel>('none');
+  /** True while a write request from an open form is in flight; the panels cannot be closed meanwhile. */
+  protected readonly writing = signal(false);
 
   protected readonly person = computed(() => {
     const state = this.state();
@@ -105,6 +107,7 @@ export class PersonPage {
       const name = this.name();
       untracked(() => {
         this.panel.set('none');
+        this.writing.set(false);
         this.load(name);
         this.focusHeading();
       });
@@ -117,20 +120,26 @@ export class PersonPage {
   }
 
   protected toggle(panel: Exclude<Panel, 'none'>): void {
+    if (this.writing()) {
+      return;
+    }
     this.panel.update((current) => (current === panel ? 'none' : panel));
   }
 
   protected closePanel(): void {
     const previous = this.panel();
     this.panel.set('none');
+    this.writing.set(false);
     this.focusAfterRender(previous === 'rename' ? this.renameButton : this.dutyButton);
   }
 
   protected onRenamed(newName: string): void {
     this.panel.set('none');
+    this.writing.set(false);
     this.notifier.confirm(`Renamed to ${newName}.`);
     if (newName === this.name()) {
       this.load(newName, true);
+      this.focusAfterRender(this.renameButton);
       return;
     }
     // The route param changes, which reloads the page for the new name; replaceUrl keeps Back from reaching the old name.
@@ -139,6 +148,7 @@ export class PersonPage {
 
   protected onDutySaved(): void {
     this.panel.set('none');
+    this.writing.set(false);
     this.notifier.confirm('Duty added.');
     this.load(this.name(), true);
     this.focusAfterRender(this.dutyButton);

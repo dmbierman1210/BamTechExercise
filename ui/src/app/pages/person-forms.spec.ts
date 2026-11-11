@@ -321,6 +321,22 @@ describe('Person page write forms (rename and add duty)', () => {
       expect(el.querySelector('form')).toBeNull();
       expect(document.activeElement).toBe(button('Rename'));
     });
+
+    it('cannot be closed while the request is in flight, so a success is never lost', async () => {
+      await openRename();
+      await fill('input[formControlName="newName"]', 'Jon Doe');
+      submit().click();
+      await settle();
+      button('Cancel').click();
+      el.querySelector('form')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+      button('Rename').click();
+      await settle();
+      expect(el.querySelector('form')).not.toBeNull();
+      controller.expectOne((r) => r.method === 'PUT').flush(ok());
+      await settle();
+      expect(el.querySelector('form')).toBeNull();
+      controller.match((r) => r.url.includes('/AstronautDuty/'));
+    });
   });
 
   describe('Add duty', () => {

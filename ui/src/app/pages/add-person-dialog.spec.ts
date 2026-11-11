@@ -259,6 +259,24 @@ describe('Add person (dialog on the People page)', () => {
     controller.match((r) => r.url.includes('/AstronautDuty/'));
   });
 
+  it('cannot be dismissed while the request is in flight', async () => {
+    await open();
+    await openDialog();
+    nameInput().value = 'Ann Lee';
+    nameInput().dispatchEvent(new Event('input'));
+    submitButton().click();
+    await settle();
+    const cancel = dialogEl()!.querySelector<HTMLButtonElement>('button[mat-dialog-close]')!;
+    expect(cancel.disabled).toBe(true);
+    dialogEl()!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    await settle();
+    expect(dialogEl()).not.toBeNull();
+    createRequests()[0].flush({ success: true, message: 'Successful', responseCode: 201, id: 9 });
+    await settle();
+    await vi.waitFor(() => expect(dialogEl()).toBeNull());
+    controller.match((r) => r.url.includes('/AstronautDuty/'));
+  });
+
   it('closes with Cancel without a request', async () => {
     await open();
     await openDialog();

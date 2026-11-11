@@ -48,9 +48,10 @@ Last updated: 2026-11-11.
 | D5 | Consolidate on EF Core only; Dapper is removed (STAR-4). |
 | D6 | UI is the MVP priority; API work proceeds in parallel against a committed contract. |
 | D7 | API and UI marathons may run at the same time under distinct project labels (disjoint paths, contract-only coupling). |
-| D8 | STAR-20 (correct/void a duty) is kept as an optional stretch goal. Removal is a soft void; **there is always an audit trail** (nothing is hard-deleted, every change keeps what it replaced). The append-only `DutyAuditEntry` table is introduced in STAR-8 (every duty create is audited) and reused by STAR-20. The app has no authentication, so "who" is not recorded unless STAR-20 adds an unverified `actor` field (open question on the issue). |
+| D8 | STAR-20 (correct/void a duty) is kept as an optional stretch goal. Removal is a soft void; **there is always an audit trail** (nothing is hard-deleted, every change keeps what it replaced). The append-only `AuditEntry` table (Person and Duty entries) is introduced in STAR-6 (person create/rename), extended in STAR-8 (every duty create) and reused by STAR-20. Every write carries a self-declared `X-Actor` header read through an `IActorProvider`, stored on audit entries and log entries; verified identity is the stretch story STAR-21 (login, after STAR-20). |
+| D10 | Actor: required `X-Actor` header on all write routes (PROPOSAL until approved at contract review). A header, not a body field, so authentication can replace it later without changing routes or bodies. |
 | D9 | The PM created the parent issue and STAR-1..20 on 2026-11-11 with acceptance criteria. The `gh` active account was switched to `dmbierman1210`. |
-| PROPOSALs | Contract PROPOSAL items in STAR-2 (#3) still need the human's yes at contract review: object body for `POST /Person`, keep the response envelope, case-insensitive names, future start dates allowed. |
+| PROPOSALs | Contract PROPOSAL items in STAR-2 (#3) still need the human's yes at contract review: object body for `POST /Person`, keep the response envelope, case-insensitive names, future start dates allowed, and the `X-Actor` header (D10). PM recommends rejecting future start dates (more than today + 1 day) instead of allowing them; waiting for the owner's answer. |
 
 ## Status table
 
@@ -63,7 +64,7 @@ Status: Proposed (issue exists with acceptance criteria, not yet startable) | No
 | - | STAR-3 | [#4](https://github.com/dmbierman1210/BamTechExercise/issues/4) | [DB] Generate the database: reconcile model/migration drift, migrate on startup, seed sample data, unique index on `Person.Name`; scaffold `tests/` project | API | P1 | 3 | Proposed | - | STAR-2 |
 | - | STAR-4 | [#5](https://github.com/dmbierman1210/BamTechExercise/issues/5) | [SEC] Consolidate on EF, remove Dapper and all string-built SQL (fixes SQL injection) | API | P1 | 3 | Proposed | - | STAR-3, D5 |
 | - | STAR-5 | [#6](https://github.com/dmbierman1210/BamTechExercise/issues/6) | [API] Fix duties-by-name (wrong query, null-person crash, 404) | API | P1 | 2 | Proposed | - | STAR-4 |
-| - | STAR-6 | [#7](https://github.com/dmbierman1210/BamTechExercise/issues/7) | [API] Person add + rename endpoints with validation and correct status codes | API | P1 | 3 | Proposed | - | STAR-4 |
+| - | STAR-6 | [#7](https://github.com/dmbierman1210/BamTechExercise/issues/7) | [API] Person add + rename endpoints with validation, correct status codes, and audit entries (introduces `AuditEntry` and `IActorProvider`) | API | P1 | 4 | Proposed | - | STAR-4 |
 | - | STAR-7 | [#8](https://github.com/dmbierman1210/BamTechExercise/issues/8) | [RULES] Duty rules core: one current duty, end-date chaining, RETIRED, career start/end dates | API | P1 | 5 | Proposed | - | STAR-4 |
 | - | STAR-8 | [#9](https://github.com/dmbierman1210/BamTechExercise/issues/9) | [RULES] Corrections: backdated duty, return from retirement, required `reason`, timeline re-chaining, append-only audit entry per duty create | API | P1 | 5 | Proposed | - | STAR-7 |
 | - | STAR-9 | [#10](https://github.com/dmbierman1210/BamTechExercise/issues/10) | [API] Global error handling and one response contract (replace per-action try/catch, bare `BadHttpRequestException`) | API | P2 | 3 | Proposed | - | STAR-6, STAR-8 |
@@ -78,6 +79,7 @@ Status: Proposed (issue exists with acceptance criteria, not yet startable) | No
 | - | STAR-18 | [#19](https://github.com/dmbierman1210/BamTechExercise/issues/19) | [INTEG] Wire UI to the live API: CORS, remove mock, end-to-end run-and-look | W3 | P1 | 5 | Proposed | - | STAR-9, STAR-14 merged |
 | - | STAR-19 | [#20](https://github.com/dmbierman1210/BamTechExercise/issues/20) | [DOC] README: run/test steps, design decisions, interview talking points | W3 | P3 | 1 | Proposed | - | STAR-18 |
 | - | STAR-20 | [#21](https://github.com/dmbierman1210/BamTechExercise/issues/21) | [RULES] Correct or void a duty entry with a reason and audit trail (stretch goal) | - | P3 | 5 | Proposed | - | STAR-8 |
+| - | STAR-21 | [#22](https://github.com/dmbierman1210/BamTechExercise/issues/22) | [AUTH] Login: replace the self-declared actor with an authenticated identity (stretch goal; needs owner decisions on accounts, sessions, roles) | - | P3 | 8 | Proposed | - | STAR-20 |
 
 Every API story includes its own unit tests and keeps the build warning-free.
 
@@ -122,5 +124,5 @@ Source of the stories above. Original paths: `extracted/tech_exercise/package/ex
 ## Open items for the human
 
 1. Contract PROPOSAL items (see Decisions): PM recommendations given in chat; waiting for the owner's yes, then they are recorded here and in issue #3.
-2. STAR-20: is a self-declared, unverified `actor` field acceptable for "who" in the audit trail (PM recommends yes), or should the audit record only when/what/why?
+2. STAR-21: owner decisions on account model, sessions, roles and whether reads need login (see issue #22) before it is refined.
 3. Switch the `gh` account back to the work account when you finish working here, and back to `dmbierman1210` before any marathon.

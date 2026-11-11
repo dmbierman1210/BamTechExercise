@@ -152,7 +152,8 @@ export class AddDutyForm {
     if (this.pending()) {
       return;
     }
-    if (this.form.dirty) {
+    const typed = [this.rank, this.dutyTitle, this.reason].some((c) => c.value.trim().length > 0);
+    if (typed) {
       this.discardHint.set(true);
       this.announcer.announce(DISCARD_HINT);
       return;

@@ -23,6 +23,13 @@ describe('ConnectionStatus', () => {
     expect(status.retryTick()).toBe(ticks + 1);
   });
 
+  it('clears a stale "offline" when a request actually succeeds', () => {
+    window.dispatchEvent(new Event('offline'));
+    expect(status.problem()?.kind).toBe('offline');
+    status.reportSuccess();
+    expect(status.problem()).toBeNull();
+  });
+
   it('prefers "offline" over an API failure', () => {
     status.reportFailure(new ApiError(0, 'x'));
     expect(status.problem()?.kind).toBe('unreachable');

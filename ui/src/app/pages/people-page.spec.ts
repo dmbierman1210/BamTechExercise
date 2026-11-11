@@ -6,6 +6,7 @@ import { RouterTestingHarness } from '@angular/router/testing';
 import { errorInterceptor } from '../api/error.interceptor';
 import type { PersonAstronaut } from '../api/models';
 import { ActorService } from '../core/actor.service';
+import { ConnectionStatus } from '../core/connection-status';
 import { StatusAnnouncer } from '../core/status-announcer';
 import { PeopleListState } from './people-list-state';
 import { PeoplePage } from './people-page';
@@ -121,6 +122,18 @@ describe('PeoplePage', () => {
     );
     return field!.querySelector('input, select') as T;
   }
+
+  it('keeps the list on screen while a retry reloads it', async () => {
+    await open();
+    await type('roe');
+    TestBed.inject(ConnectionStatus).retry();
+    await settle();
+    expect(el.querySelector('.skeleton')).toBeNull();
+    expect(names()).toEqual(['jane roe', 'Richard Roe']);
+    respond(FIXTURE);
+    await settle();
+    expect(names()).toEqual(['jane roe', 'Richard Roe']);
+  });
 
   it('shows a loading skeleton, then renders a card per person from the fixture', async () => {
     await open('/people', null);

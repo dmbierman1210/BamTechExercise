@@ -74,6 +74,13 @@ const scenarios = [
 ];
 
 const browser = await chromium.launch({ executablePath, headless: true });
+for (const event of ['uncaughtException', 'unhandledRejection']) {
+  process.on(event, async (error) => {
+    console.error(error);
+    await browser.close().catch(() => {});
+    process.exit(1);
+  });
+}
 let blocking = 0;
 for (const width of widths) {
   for (const scenario of scenarios) {

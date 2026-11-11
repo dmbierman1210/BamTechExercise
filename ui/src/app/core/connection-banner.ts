@@ -1,3 +1,4 @@
+import { DOCUMENT } from '@angular/common';
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -20,9 +21,9 @@ import { ConnectionStatus } from './connection-status';
           }}</mat-icon>
           <p class="message">{{ problem.message }}</p>
           @if (problem.kind === 'server-error') {
-            <button mat-button type="button" (click)="status.dismiss()">Dismiss</button>
+            <button mat-button type="button" (click)="act(() => status.dismiss())">Dismiss</button>
           } @else {
-            <button mat-flat-button type="button" class="retry" (click)="status.retry()">
+            <button mat-flat-button type="button" class="retry" (click)="act(() => status.retry())">
               <mat-icon aria-hidden="true">refresh</mat-icon>
               Retry
             </button>
@@ -71,4 +72,11 @@ import { ConnectionStatus } from './connection-status';
 })
 export class ConnectionBanner {
   protected readonly status = inject(ConnectionStatus);
+  private readonly document = inject(DOCUMENT);
+
+  /** Runs the action, then parks focus on the page content: the button that was clicked may be gone. */
+  protected act(action: () => void): void {
+    action();
+    this.document.getElementById('main')?.focus();
+  }
 }

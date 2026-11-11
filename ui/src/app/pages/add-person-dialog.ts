@@ -98,7 +98,7 @@ export class AddPersonDialog {
     // Typed text is never discarded by Escape or a backdrop click; only the Cancel button closes the dialog then.
     this.name.valueChanges.subscribe(() => {
       this.discardHint.set(false);
-      this.dialogRef.disableClose = this.name.dirty;
+      this.dialogRef.disableClose = this.name.value.trim().length > 0;
     });
     const refuse = () => {
       if (this.dialogRef.disableClose && !this.pending()) {
@@ -133,7 +133,7 @@ export class AddPersonDialog {
       next: () => this.dialogRef.close(name),
       error: (error: unknown) => {
         this.pending.set(false);
-        this.dialogRef.disableClose = this.name.dirty;
+        this.dialogRef.disableClose = this.name.value.trim().length > 0;
         this.formError.set(
           applyServerError(error, { fields: { name: this.name }, conflict: this.name }),
         );

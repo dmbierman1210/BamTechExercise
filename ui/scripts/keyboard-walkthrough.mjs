@@ -16,6 +16,13 @@ const executablePath =
   process.env.BROWSER_PATH ?? 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe';
 
 const browser = await chromium.launch({ executablePath, headless: true });
+for (const event of ['uncaughtException', 'unhandledRejection']) {
+  process.on(event, async (error) => {
+    console.error(error);
+    await browser.close().catch(() => {});
+    process.exit(1);
+  });
+}
 const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
 const page = await context.newPage();
 const consoleErrors = [];

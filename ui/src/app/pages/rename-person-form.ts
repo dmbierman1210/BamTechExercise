@@ -167,12 +167,12 @@ export class RenamePersonForm implements OnInit {
     }
   }
 
-  /** Escape closes the form only while nothing was typed; otherwise it explains how to discard. */
+  /** Escape closes the form only while the name is unchanged; otherwise it explains how to discard. */
   protected escape(): void {
     if (this.pending()) {
       return;
     }
-    if (this.form.dirty) {
+    if (this.newName.value.trim() !== this.currentName()) {
       this.discardHint.set(true);
       this.announcer.announce(DISCARD_HINT);
       return;

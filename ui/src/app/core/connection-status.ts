@@ -67,6 +67,7 @@ export class ConnectionStatus {
   /** A response arrived (any status below 500), so the API is reachable and healthy. */
   reportSuccess(): void {
     this.failure.set(null);
+    this.online.set(true);
   }
 
   reportFailure(error: ApiError): void {

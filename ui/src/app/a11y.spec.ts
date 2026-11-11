@@ -254,6 +254,7 @@ describe('Accessibility scan (axe-core, serious and critical)', () => {
     await showPeople();
     TestBed.inject(ConnectionStatus).reportFailure(new ApiError(0, 'down'));
     await settle();
+    expect(document.body.querySelector('app-connection-banner .banner')).not.toBeNull();
     expect(await seriousViolations(document.body)).toEqual([]);
   });
 });

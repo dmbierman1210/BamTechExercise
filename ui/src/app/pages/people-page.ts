@@ -139,23 +139,30 @@ export class PeoplePage {
       const tick = this.connection.retryTick();
       if (tick !== lastTick) {
         lastTick = tick;
-        untracked(() => this.load());
+        untracked(() => this.load(this.state().kind === 'loaded'));
       }
     });
     this.destroyRef.onDestroy(() => this.request?.unsubscribe());
     this.load();
   }
 
-  protected load(): void {
+  /** `refresh` keeps showing the current list (and the user's place in it) until the new data arrives. */
+  protected load(refresh = false): void {
     this.request?.unsubscribe();
-    this.state.set({ kind: 'loading' });
+    if (!refresh) {
+      this.state.set({ kind: 'loading' });
+    }
     this.request = this.people.getPeople().subscribe({
       next: (response) => this.state.set({ kind: 'loaded', people: response.people }),
-      error: (error: unknown) =>
+      error: (error: unknown) => {
+        if (refresh) {
+          return;
+        }
         this.state.set({
           kind: 'error',
           message: error instanceof ApiError ? error.message : 'Something went wrong. Try again.',
-        }),
+        });
+      },
     });
   }
 

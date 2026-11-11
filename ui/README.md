@@ -38,7 +38,7 @@ ui/
       duty.service.ts     getAstronautDutiesByName, createAstronautDuty
       api-error.ts        ApiError (status, message, errors[]) + envelope mapping
       error.interceptor.ts  Maps every failed call to ApiError
-    core/                 "Acting as": ActorService, interceptor, dialog, toolbar control, ActorRequiredDirective
+    core/                 "Acting as": ActorService, interceptor, dialog, toolbar control, ActorRequiredDirective, ActorHint, Notifier
     pages/                People list (`/people`), person detail (`/people/:name`), 404
     shared/               StatusBadge (icon + text badge) and date helpers (`dates.ts`)
     app.*                 Shell: toolbar, nav (slide-over sidenav on phone widths), router outlet
@@ -72,10 +72,13 @@ characters, trimmed). The toolbar's **Acting as** control asks for a name, store
 `acts.actor`, lets you change or clear it, and labels it **self-declared, not verified**.
 
 - `actorInterceptor` adds `X-Actor` to every write request while a name is set.
-- `ActorService.hasActor()` is a signal; write actions must stay disabled with a hint until it is true. Put the
-  `appActorRequired` directive on every button that changes data:
-  `<button mat-flat-button appActorRequired (click)="save()">Save</button>`. It disables the control and sets the hint
-  as its title. Do not also bind `[disabled]` on that element.
+- `ActorService.hasActor()` is a signal; write actions must stay blocked with a hint until it is true. Put the
+  `appActorRequired` directive on every button that changes data and give it the id of a visible hint
+  (`<app-actor-hint id="save-hint" />`):
+  `<button mat-flat-button appActorRequired="save-hint" [actorBusy]="pending()" (click)="save()">Save</button>`.
+  A blocked control keeps focus (`aria-disabled`, not the native `disabled`), points to the hint with
+  `aria-describedby`, has the hint as its title, and swallows clicks. `[actorBusy]` blocks it the same way while a
+  request is pending (no double submit). Do not also bind `[disabled]` on that element.
 - The toolbar control turns amber ("Set your name") while no name is set. The dialog is not opened automatically.
 
 ## Mock API (`mock-server/`)
@@ -107,9 +110,8 @@ CORS is open, including `X-Actor` and the preflight.
 The default route lists everyone from `GET /Person` (`PersonService.getPeople`) as responsive cards: name (a link to
 `/people/:name`, URL-encoded), current rank, current duty title and a status badge. Badges carry an icon and text, so
 color is never the only signal: `None` = "Not an astronaut", `Active`, `Retired`. States: loading skeleton, "No people
-yet" (with a disabled Add person placeholder until STAR-13; it uses `disabledInteractive`, so it stays focusable and
-points to its hint with `aria-describedby`), "No matches" (with a clear button) and a retryable error that shows the
-API message.
+yet" (with an Add person button), "No matches" (with a clear button) and a retryable error that shows the
+API message. The header has a persistent **Add person** button (see "Writing data" below).
 
 List state lives in the URL query params, so it survives reloads and browser Back:
 
@@ -142,11 +144,36 @@ Greenwich). `shared/dates.ts` splits the parts, formats with `Intl.DateTimeForma
 timeZone: 'UTC' })` using the browser locale and does the career-length math on integers. `dates.spec.ts` runs it with
 `TZ` set to a negative-offset zone (America/Los_Angeles, Pacific/Honolulu) and a positive one (Pacific/Kiritimati).
 
+## Writing data (add person, rename, add duty)
+
+All writes need an actor name (see above) and are blocked with a visible hint until one is set. Shared pieces:
+`shared/form-errors.ts` (trimmed-text validator, `applyServerError`), `shared/form-alert.ts` (dismissible form-level
+message), `core/notifier.ts` (confirmation snackbar, polite live region).
+
+- **Add person** (`pages/add-person-dialog.ts`, `POST /Person`): a dialog opened from the People header or the empty
+  state. Name is trimmed, required, at most 200. A 409 shows on the name field, `errors[]` on their fields, anything
+  else as a dismissible message. Success goes to `/people/<new name>`; the list reloads whenever it is opened.
+- **Rename** (`pages/rename-person-form.ts`, `PUT /Person/{name}`): inline form under the person header. An unchanged
+  name (after trimming) sends no request and shows a hint; a case-only change is allowed. Success replaces the URL
+  (`replaceUrl`) with the new name and reloads; 404 and 409 are shown in the form.
+- **Add duty** (`pages/add-duty-form.ts`, `POST /AstronautDuty`): rank, duty title (with a `RETIRED` quick-pick that also
+  fills an empty rank), start date (native `<input type="date">`: its value is exactly `yyyy-MM-dd`, so no time zone
+  can shift the day) and reason. The start date defaults to today in UTC. `pages/duty-reason.ts` decides when the reason
+  is required, from the loaded duties (latest duty = latest start date) and today in UTC, and a banner (`role="region"`
+  inside a polite live region) explains why: **Correcting an earlier date** (before the latest duty start),
+  **Returning from retirement** (latest duty is `RETIRED`) or **Future-dated entry** (after today, UTC); if several apply
+  the order is that one. A start date that an existing duty already uses is flagged client-side (the server's 409 is
+  still handled). Success closes the form, reloads the timeline in place and confirms with a snackbar.
+- Submit buttons use `[actorBusy]` while a request is pending, and the submit handlers ignore a second call, so two
+  quick clicks send one request. `Escape` closes the inline forms and the dialog.
+
 ## Screenshots
 
 `docs/screenshots/`: `star-10-shell-desktop.png` (1280 px), `star-10-shell-phone.png` (390 px),
 `star-11-list-desktop.png`, `star-11-list-phone.png`, `star-11-search-filter.png`, `star-11-error.png` (mock stopped),
 `star-11-empty.png` (`MOCK_EMPTY=1`), `star-12-active-desktop.png` (John Doe), `star-12-retired-desktop.png` (Jane Roe),
 `star-12-returned-desktop.png` (Ada Stone), `star-12-none-desktop.png` (Richard Roe), `star-12-notfound.png`,
-`star-12-active-phone.png` (390 px).
+`star-12-active-phone.png` (390 px). STAR-13: `star-13-add-person.png`, `star-13-add-person-duplicate.png` (409),
+`star-13-rename.png`, `star-13-add-duty.png`, `star-13-reason-banner-backdated.png`, `star-13-reason-banner-return.png`,
+`star-13-error.png` (rename to a taken name), `star-13-no-actor-hint.png` and `star-13-add-duty-phone.png` (390 px).
 

@@ -169,6 +169,24 @@ describe('PersonPage', () => {
       expect(text(el.querySelector('h1'))).toBe('Jane Roe');
       expect(entries().length).toBe(2);
     });
+
+    it('cancels the request in flight when the route param changes', async () => {
+      await open('/people/John%20Doe');
+      const first = dutiesRequest();
+      await TestBed.inject(Router).navigateByUrl('/people/Jane%20Roe');
+      harness.detectChanges();
+      expect(first.cancelled).toBe(true);
+      dutiesRequest().flush({
+        success: true,
+        message: 'Successful',
+        responseCode: 200,
+        person: RETIRED,
+        astronautDuties: RETIRED_DUTIES,
+      });
+      await settle();
+      expect(text(el.querySelector('h1'))).toBe('Jane Roe');
+      expect(entries().length).toBe(2);
+    });
   });
 
   describe('loading', () => {

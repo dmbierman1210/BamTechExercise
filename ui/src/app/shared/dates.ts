@@ -55,14 +55,28 @@ export function monthsBetween(
   }
   const total = (to.year - from.year) * 12 + (to.month - from.month) - (to.day < from.day ? 1 : 0);
   if (total < 0) {
-    return { years: 0, months: 0 };
+    return null;
   }
   return { years: Math.floor(total / 12), months: total % 12 };
 }
 
+/** The day after an ISO date, using calendar arithmetic that no time zone can shift. */
+function nextDay(iso: string): string {
+  const parts = parseIsoDate(iso);
+  if (!parts) {
+    return iso;
+  }
+  const next = new Date(Date.UTC(parts.year, parts.month - 1, parts.day + 1));
+  const pad = (value: number, size = 2) => String(value).padStart(size, '0');
+  return `${pad(next.getUTCFullYear(), 4)}-${pad(next.getUTCMonth() + 1)}-${pad(next.getUTCDate())}`;
+}
+
 const plural = (count: number, unit: string) => `${count} ${unit}${count === 1 ? '' : 's'}`;
 
-/** "5 years, 3 months"; zero parts are left out and less than a month reads "Less than a month". */
+/**
+ * "5 years, 3 months"; zero parts are left out and less than a month reads "Less than a month".
+ * `end` is the last day of service (inclusive), so the span runs to the day after it.
+ */
 export function formatCareerLength(
   start: string | null | undefined,
   end: string | null | undefined,
@@ -71,7 +85,7 @@ export function formatCareerLength(
   if (!start) {
     return null;
   }
-  const length = monthsBetween(start, end || today);
+  const length = monthsBetween(start, end ? nextDay(end) : today);
   if (!length) {
     return null;
   }

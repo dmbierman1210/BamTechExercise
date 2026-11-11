@@ -77,12 +77,6 @@ describe('formatDate', () => {
       expect(naive).toBe('Jan 14, 2020');
     });
 
-    it('measures career length by calendar days', () => {
-      expect(formatCareerLength('2020-01-15', '2025-04-15', '2030-01-01')).toBe(
-        '5 years, 3 months',
-      );
-    });
-
     it('reads today as the local calendar date', () => {
       const lateEvening = new Date(2020, 0, 15, 23, 30);
       expect(todayIsoDate(lateEvening)).toBe('2020-01-15');
@@ -97,8 +91,8 @@ describe('monthsBetween', () => {
     expect(monthsBetween('2020-01-31', '2020-03-30')).toEqual({ years: 0, months: 1 });
   });
 
-  it('is zero when the end is before the start', () => {
-    expect(monthsBetween('2020-05-01', '2020-01-01')).toEqual({ years: 0, months: 0 });
+  it('is null when the end is before the start', () => {
+    expect(monthsBetween('2020-05-01', '2020-01-01')).toBeNull();
   });
 });
 
@@ -116,6 +110,16 @@ describe('formatCareerLength', () => {
 
   it('runs to today when there is no career end', () => {
     expect(formatCareerLength('2020-01-15', null, '2023-05-01')).toBe('3 years, 3 months');
+  });
+
+  it('counts the career end as the last day of service', () => {
+    expect(formatCareerLength('2020-01-01', '2020-12-31')).toBe('1 year');
+    expect(formatCareerLength('2020-01-15', '2020-02-14')).toBe('1 month');
+    expect(formatCareerLength('2019-12-31', '2020-02-29')).toBe('2 months');
+  });
+
+  it('shows nothing for an impossible span', () => {
+    expect(formatCareerLength('2020-05-01', '2020-01-01')).toBeNull();
   });
 
   it('is null without a start date', () => {

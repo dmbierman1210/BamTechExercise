@@ -33,9 +33,20 @@ export function createSeed({ empty = false } = {}) {
         ],
       },
       { personId: 3, name: 'Richard Roe', duties: [] },
+      {
+        // Retired in 2015 and came back in 2018, so the timeline has a RETIRED entry in the middle and is Active again.
+        personId: 4,
+        name: 'Ada Stone',
+        duties: [
+          duty(7, 4, '1LT', 'Pilot', '2005-04-11', null),
+          duty(8, 4, 'CPT', 'Flight Engineer', '2010-09-01', null),
+          duty(9, 4, 'MAJ', 'RETIRED', '2015-07-01', null),
+          duty(10, 4, 'MAJ', 'Pilot', '2018-03-01', 'Returned from retirement'),
+        ],
+      },
     ],
-    nextPersonId: 4,
-    nextDutyId: 7,
+    nextPersonId: 5,
+    nextDutyId: 11,
   };
 }
 

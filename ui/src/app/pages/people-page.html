@@ -121,10 +121,7 @@
                     <dd>{{ person.currentDutyTitle || 'Not assigned' }}</dd>
                   </div>
                 </dl>
-                <span class="badge badge-{{ person.astronautStatus.toLowerCase() }}">
-                  <mat-icon aria-hidden="true">{{ badges[person.astronautStatus].icon }}</mat-icon>
-                  {{ badges[person.astronautStatus].label }}
-                </span>
+                <app-status-badge [status]="person.astronautStatus" />
               </li>
             }
           </ul>

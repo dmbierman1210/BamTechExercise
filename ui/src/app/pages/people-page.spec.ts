@@ -8,7 +8,7 @@ import type { PersonAstronaut } from '../api/models';
 import { ActorService } from '../core/actor.service';
 import { PeopleListState } from './people-list-state';
 import { PeoplePage } from './people-page';
-import { PersonPlaceholderPage } from './person-placeholder-page';
+import { PersonPage } from './person-page';
 
 const FIXTURE: PersonAstronaut[] = [
   {
@@ -51,7 +51,7 @@ describe('PeoplePage', () => {
       providers: [
         provideRouter([
           { path: 'people', component: PeoplePage },
-          { path: 'people/:name', component: PersonPlaceholderPage },
+          { path: 'people/:name', component: PersonPage },
         ]),
         provideHttpClient(withInterceptors([errorInterceptor])),
         provideHttpClientTesting(),
@@ -76,6 +76,19 @@ describe('PeoplePage', () => {
     controller
       .expectOne((r) => r.method === 'GET' && r.url.endsWith('/Person'))
       .flush({ success: true, message: 'Successful', responseCode: 200, people });
+  }
+
+  /** Answers the person page's duties request (the real page is routed to). */
+  function respondDuties(person: PersonAstronaut) {
+    controller
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/AstronautDuty/'))
+      .flush({
+        success: true,
+        message: 'Successful',
+        responseCode: 200,
+        person,
+        astronautDuties: [],
+      });
   }
 
   async function settle() {
@@ -294,6 +307,9 @@ describe('PeoplePage', () => {
       link.click();
       await harness.fixture.whenStable();
       expect(TestBed.inject(Router).url).toBe('/people/John%20Doe');
+      respondDuties(FIXTURE[0]);
+      await harness.fixture.whenStable();
+      harness.detectChanges();
       expect(harness.routeNativeElement?.querySelector('h1')?.textContent).toBe('John Doe');
     });
 
@@ -308,8 +324,9 @@ describe('PeoplePage', () => {
       expect(link.getAttribute('href')).toBe('/people/A%2FB%3F%20Doe');
       link.click();
       await harness.fixture.whenStable();
+      respondDuties({ ...FIXTURE[0], name: 'A/B? Doe' });
+      await harness.fixture.whenStable();
       harness.detectChanges();
-
       const back = (harness.routeNativeElement as HTMLElement).querySelector('a')!;
       expect(back.getAttribute('href')).toBe('/people?q=o&status=active&sort=name-desc');
     });

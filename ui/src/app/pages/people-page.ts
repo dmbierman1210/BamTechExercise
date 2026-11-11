@@ -23,7 +23,6 @@ import {
   type StatusFilter,
   DEFAULT_FILTERS,
   SORT_ORDERS,
-  STATUS_BADGE,
   STATUS_FILTERS,
   filterAndSort,
   hasActiveFilters,
@@ -31,6 +30,7 @@ import {
   toQueryParams,
 } from './people-list';
 import { PeopleListState } from './people-list-state';
+import { StatusBadge } from '../shared/status-badge';
 
 type LoadState =
   | { kind: 'loading' }
@@ -40,7 +40,7 @@ type LoadState =
 @Component({
   selector: 'app-people-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [MatButtonModule, MatIconModule, MatInputModule, RouterLink],
+  imports: [MatButtonModule, MatIconModule, MatInputModule, RouterLink, StatusBadge],
   templateUrl: './people-page.html',
   styleUrl: './people-page.scss',
 })
@@ -55,7 +55,6 @@ export class PeoplePage {
 
   protected readonly statusFilters = STATUS_FILTERS;
   protected readonly sortOrders = SORT_ORDERS;
-  protected readonly badges = STATUS_BADGE;
   protected readonly skeletonRows = [1, 2, 3, 4, 5, 6];
 
   protected readonly state = signal<LoadState>({ kind: 'loading' });

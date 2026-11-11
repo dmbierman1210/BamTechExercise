@@ -58,7 +58,7 @@ Status: Proposed (issue exists with acceptance criteria, not yet startable) | No
 
 | | ID | Issue | Title | Lane | Pri | Pts (est) | Status | Claimed-by | Depends on |
 |---|---|---|---|---|---|---|---|---|---|
-| - | STAR-1 | [#2](https://github.com/dmbierman1210/BamTechExercise/issues/2) | [REPO] Flatten to target layout, `.gitignore`, solution file, drop stale bin/obj, first push to `main` | W0 | P1 | 2 | In Progress | copilot-827573 | - |
+| - | STAR-1 | [#2](https://github.com/dmbierman1210/BamTechExercise/issues/2) | [REPO] Flatten to target layout, `.gitignore`, solution file, drop stale bin/obj, first push to `main` | W0 | P1 | 2 | Done | copilot-827573 | - |
 | - | STAR-2 | [#3](https://github.com/dmbierman1210/BamTechExercise/issues/3) | [CONTRACT] API contract v1: `docs/api/openapi.yaml` + example payloads for people, duties, errors (reason field, 404/409 shapes) | W0 | P1 | 3 | Proposed | - | STAR-1 |
 | - | STAR-3 | [#4](https://github.com/dmbierman1210/BamTechExercise/issues/4) | [DB] Generate the database: reconcile model/migration drift, migrate on startup, seed sample data, unique index on `Person.Name`; scaffold `tests/` project | API | P1 | 3 | Proposed | - | STAR-2 |
 | - | STAR-4 | [#5](https://github.com/dmbierman1210/BamTechExercise/issues/5) | [SEC] Consolidate on EF, remove Dapper and all string-built SQL (fixes SQL injection) | API | P1 | 3 | Proposed | - | STAR-3, D5 |

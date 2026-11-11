@@ -43,6 +43,11 @@ export function todayIsoDate(now: Date = new Date()): string {
   return `${String(now.getFullYear()).padStart(4, '0')}-${month}-${day}`;
 }
 
+/** Today's calendar date in UTC as `yyyy-MM-dd`: the day the contract's "in the future" rule uses. */
+export function todayUtcIsoDate(now: Date = new Date()): string {
+  return now.toISOString().slice(0, 10);
+}
+
 /** Whole years and months from `start` to `end` (a month is complete once the day of month is reached). */
 export function monthsBetween(
   start: string,

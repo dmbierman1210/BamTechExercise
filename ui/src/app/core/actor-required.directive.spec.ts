@@ -49,7 +49,7 @@ describe('ActorRequiredDirective (writes are blocked until a name is set)', () =
     expect(button.getAttribute('aria-disabled')).toBe('true');
     expect(button.title).toBe(actors.hint);
     button.click();
-    controller.expectNone('http://localhost:3000/Person');
+    controller.expectNone((request) => request.method === 'POST');
   });
 
   it('enables the control once a name is set and the write carries X-Actor', async () => {

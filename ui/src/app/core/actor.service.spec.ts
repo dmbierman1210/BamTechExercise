@@ -14,6 +14,14 @@ describe('validateActorName', () => {
     expect(validateActorName(null)).not.toBeNull();
     expect(validateActorName('x'.repeat(101))).not.toBeNull();
   });
+
+  it('accepts printable ASCII and rejects characters a header cannot carry safely', () => {
+    expect(validateActorName('Jose Mueller-Smith, Jr.')).toBeNull();
+    expect(validateActorName('José')).not.toBeNull();
+    expect(validateActorName('李')).not.toBeNull();
+    expect(validateActorName('Ada 🚀')).not.toBeNull();
+    expect(validateActorName('line\nbreak')).not.toBeNull();
+  });
 });
 
 describe('ActorService', () => {

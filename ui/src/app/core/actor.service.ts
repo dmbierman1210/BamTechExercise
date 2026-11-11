@@ -13,6 +13,10 @@ export function validateActorName(value: string | null | undefined): string | nu
   if (name.length > ACTOR_MAX_LENGTH) {
     return `The name must be at most ${ACTOR_MAX_LENGTH} characters.`;
   }
+  // The name travels in an HTTP header: keep it to printable ASCII so every server decodes it the same way.
+  if (!/^[\x20-\x7E]+$/.test(name)) {
+    return 'Use plain letters, digits and punctuation only (no accents, emoji or non-Latin characters).';
+  }
   return null;
 }
 

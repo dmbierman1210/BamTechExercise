@@ -342,11 +342,13 @@ components:
             notFound:
               $ref: '#/components/examples/PersonNotFound'
     InternalServerError:
-      description: Unexpected server error. The message is generic and never contains internals.
+      description: |
+        Unexpected server error. The message is generic and never contains internals.
+        `traceId` identifies the failure in the process log (`LogEntry.TraceId`).
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/ErrorResponse'
+            $ref: '#/components/schemas/ServerErrorResponse'
           examples:
             serverError:
               $ref: '#/components/examples/ServerError'
@@ -385,6 +387,16 @@ components:
               description: Present on validation errors, one entry per invalid field.
               items:
                 $ref: '#/components/schemas/FieldError'
+    ServerErrorResponse:
+      allOf:
+        - $ref: '#/components/schemas/BaseResponse'
+        - type: object
+          required: [traceId]
+          properties:
+            traceId:
+              type: string
+              description: Identifier of the failed request; quote it to find the exception in the process log.
+              example: 00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-00
     CreatedResponse:
       allOf:
         - $ref: '#/components/schemas/BaseResponse'
@@ -685,6 +697,7 @@ components:
         success: false
         message: An unexpected error occurred.
         responseCode: 500
+        traceId: 00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-00
     MissingActor:
       summary: X-Actor header missing or blank
       value:

@@ -1,7 +1,8 @@
-﻿using Dapper;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 using StargateAPI.Business.Data;
 using StargateAPI.Business.Dtos;
+using StargateAPI.Business.Exceptions;
 using StargateAPI.Controllers;
 
 namespace StargateAPI.Business.Queries
@@ -22,29 +23,31 @@ namespace StargateAPI.Business.Queries
 
         public async Task<GetAstronautDutiesByNameResult> Handle(GetAstronautDutiesByName request, CancellationToken cancellationToken)
         {
+            var person = await (await _context.PeopleNamedAsync(request.Name, cancellationToken))
+                .AsNoTracking()
+                .Select(PersonAstronaut.Projection)
+                .FirstOrDefaultAsync(cancellationToken)
+                ?? throw NotFoundException.Person();
 
-            var result = new GetAstronautDutiesByNameResult();
+            var duties = await _context.AstronautDuties
+                .AsNoTracking()
+                .Where(d => d.PersonId == person.PersonId)
+                .OrderByDescending(d => d.DutyStartDate)
+                .Select(AstronautDutyDto.Projection)
+                .ToListAsync(cancellationToken);
 
-            var query = $"SELECT a.Id as PersonId, a.Name, b.CurrentRank, b.CurrentDutyTitle, b.CareerStartDate, b.CareerEndDate FROM [Person] a LEFT JOIN [AstronautDetail] b on b.PersonId = a.Id WHERE \'{request.Name}\' = a.Name";
-
-            var person = await _context.Connection.QueryFirstOrDefaultAsync<PersonAstronaut>(query);
-
-            result.Person = person;
-
-            query = $"SELECT * FROM [AstronautDuty] WHERE {person.PersonId} = PersonId Order By DutyStartDate Desc";
-
-            var duties = await _context.Connection.QueryAsync<AstronautDuty>(query);
-
-            result.AstronautDuties = duties.ToList();
-
-            return result;
-
+            return new GetAstronautDutiesByNameResult
+            {
+                Person = person,
+                AstronautDuties = duties,
+            };
         }
     }
 
     public class GetAstronautDutiesByNameResult : BaseResponse
     {
-        public PersonAstronaut Person { get; set; }
-        public List<AstronautDuty> AstronautDuties { get; set; } = new List<AstronautDuty>();
+        public required PersonAstronaut Person { get; init; }
+
+        public List<AstronautDutyDto> AstronautDuties { get; init; } = new();
     }
 }

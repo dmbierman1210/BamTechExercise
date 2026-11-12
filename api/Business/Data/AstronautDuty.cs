@@ -15,11 +15,13 @@ namespace StargateAPI.Business.Data
 
         public string DutyTitle { get; set; } = string.Empty;
 
-        public DateTime DutyStartDate { get; set; }
+        public DateOnly DutyStartDate { get; set; }
 
-        public DateTime? DutyEndDate { get; set; }
+        public DateOnly? DutyEndDate { get; set; }
 
-        public virtual Person Person { get; set; }
+        public string? Reason { get; set; }
+
+        public virtual Person Person { get; set; } = null!;
     }
 
     public class AstronautDutyConfiguration : IEntityTypeConfiguration<AstronautDuty>
@@ -28,6 +30,10 @@ namespace StargateAPI.Business.Data
         {
             builder.HasKey(x => x.Id);
             builder.Property(x => x.Id).ValueGeneratedOnAdd();
+            builder.Property(x => x.Rank).IsRequired().HasMaxLength(100);
+            builder.Property(x => x.DutyTitle).IsRequired().HasMaxLength(100);
+            builder.Property(x => x.Reason).HasMaxLength(500);
+            builder.HasIndex(x => new { x.PersonId, x.DutyStartDate }).IsUnique();
         }
     }
 }

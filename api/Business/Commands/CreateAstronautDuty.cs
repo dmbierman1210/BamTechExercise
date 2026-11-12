@@ -1,124 +1,275 @@
-﻿using Dapper;
-using MediatR;
-using MediatR.Pipeline;
-using Microsoft.EntityFrameworkCore;
-using StargateAPI.Business.Data;
-using StargateAPI.Controllers;
+using System.Globalization;
 using System.Net;
+using System.Text.Json;
+using MediatR;
+using Microsoft.EntityFrameworkCore;
+using StargateAPI.Business.Auditing;
+using StargateAPI.Business.Data;
+using StargateAPI.Business.Exceptions;
+using StargateAPI.Business.Queries;
+using StargateAPI.Business.Validation;
+using StargateAPI.Controllers;
 
 namespace StargateAPI.Business.Commands
 {
     public class CreateAstronautDuty : IRequest<CreateAstronautDutyResult>
     {
-        public required string Name { get; set; }
+        // Everything is nullable (and the date a string) so that a missing or malformed value is reported
+        // as a field error in the contract envelope instead of failing model binding.
+        public string? Name { get; set; }
 
-        public required string Rank { get; set; }
+        public string? Rank { get; set; }
 
-        public required string DutyTitle { get; set; }
+        public string? DutyTitle { get; set; }
 
-        public DateTime DutyStartDate { get; set; }
+        public string? DutyStartDate { get; set; }
+
+        public string? Reason { get; set; }
     }
 
-    public class CreateAstronautDutyPreProcessor : IRequestPreProcessor<CreateAstronautDuty>
-    {
-        private readonly StargateContext _context;
-
-        public CreateAstronautDutyPreProcessor(StargateContext context)
-        {
-            _context = context;
-        }
-
-        public Task Process(CreateAstronautDuty request, CancellationToken cancellationToken)
-        {
-            var person = _context.People.AsNoTracking().FirstOrDefault(z => z.Name == request.Name);
-
-            if (person is null) throw new BadHttpRequestException("Bad Request");
-
-            var verifyNoPreviousDuty = _context.AstronautDuties.FirstOrDefault(z => z.DutyTitle == request.DutyTitle && z.DutyStartDate == request.DutyStartDate);
-
-            if (verifyNoPreviousDuty is not null) throw new BadHttpRequestException("Bad Request");
-
-            return Task.CompletedTask;
-        }
-    }
-
+    /// <summary>
+    /// Adds a duty to a person's timeline. All rules run on the person's whole timeline inside one transaction,
+    /// so a rejected or failed call changes nothing. The timeline is always re-chained afterwards: every duty
+    /// ends the day before the next one starts and only the latest has no end date.
+    /// </summary>
     public class CreateAstronautDutyHandler : IRequestHandler<CreateAstronautDuty, CreateAstronautDutyResult>
     {
-        private readonly StargateContext _context;
+        public const int MaxRankLength = 100;
+        public const int MaxDutyTitleLength = 100;
+        public const int MaxReasonLength = 500;
+        private const string DateFormat = "yyyy-MM-dd";
 
-        public CreateAstronautDutyHandler(StargateContext context)
+        private readonly StargateContext _context;
+        private readonly IActorProvider _actorProvider;
+        private readonly TimeProvider _time;
+
+        public CreateAstronautDutyHandler(StargateContext context, IActorProvider actorProvider, TimeProvider time)
         {
             _context = context;
+            _actorProvider = actorProvider;
+            _time = time;
         }
+
         public async Task<CreateAstronautDutyResult> Handle(CreateAstronautDuty request, CancellationToken cancellationToken)
         {
+            var errors = new List<FieldError>();
+            var name = PersonNameRules.Validate(request.Name, "name", "name", errors);
+            var rank = ValidateText(request.Rank, "rank", "rank", MaxRankLength, errors);
+            var dutyTitle = ValidateText(request.DutyTitle, "dutyTitle", "duty title", MaxDutyTitleLength, errors);
+            var startDate = ParseDate(request.DutyStartDate, errors);
+            var reason = ValidateReason(request.Reason, errors);
+            var today = DateOnly.FromDateTime(_time.GetUtcNow().UtcDateTime);
 
-            var query = $"SELECT * FROM [Person] WHERE \'{request.Name}\' = Name";
-
-            var person = await _context.Connection.QueryFirstOrDefaultAsync<Person>(query);
-
-            query = $"SELECT * FROM [AstronautDetail] WHERE {person.Id} = PersonId";
-
-            var astronautDetail = await _context.Connection.QueryFirstOrDefaultAsync<AstronautDetail>(query);
-
-            if (astronautDetail == null)
+            // Depends only on the request, so it is part of the first validation step (before 404 and 409).
+            if (reason is null && startDate > today && !errors.Any(e => e.Field == "reason"))
             {
-                astronautDetail = new AstronautDetail();
-                astronautDetail.PersonId = person.Id;
-                astronautDetail.CurrentDutyTitle = request.DutyTitle;
-                astronautDetail.CurrentRank = request.Rank;
-                astronautDetail.CareerStartDate = request.DutyStartDate.Date;
-                if (request.DutyTitle == "RETIRED")
+                errors.Add(new FieldError("reason", "A reason is required when the duty starts in the future."));
+            }
+
+            var actor = ActorRules.Require(_actorProvider, errors);
+
+            if (errors.Count > 0 || name is null || rank is null || dutyTitle is null || startDate is null || actor is null)
+            {
+                throw new ValidationFailedException(errors);
+            }
+
+            using var writeGate = await WriteGate.EnterAsync(cancellationToken);
+
+            var person = await (await _context.PeopleNamedAsync(name, cancellationToken)).FirstOrDefaultAsync(cancellationToken);
+
+            if (person is null)
+            {
+                throw NotFoundException.Person();
+            }
+
+            try
+            {
+                await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
+
+                var timeline = await _context.AstronautDuties
+                    .Where(d => d.PersonId == person.Id)
+                    .OrderBy(d => d.DutyStartDate)
+                    .ToListAsync(cancellationToken);
+
+                if (timeline.Any(d => d.DutyStartDate == startDate.Value))
                 {
-                    astronautDetail.CareerEndDate = request.DutyStartDate.Date;
+                    throw ConflictException.DutyStartDateTaken();
                 }
 
-                await _context.AstronautDetails.AddAsync(astronautDetail);
-
-            }
-            else
-            {
-                astronautDetail.CurrentDutyTitle = request.DutyTitle;
-                astronautDetail.CurrentRank = request.Rank;
-                if (request.DutyTitle == "RETIRED")
+                var missingReason = reason is null ? HistoryReasonRequiredMessage(timeline, startDate.Value) : null;
+                if (missingReason is not null)
                 {
-                    astronautDetail.CareerEndDate = request.DutyStartDate.AddDays(-1).Date;
+                    throw new ValidationFailedException(new[] { new FieldError("reason", missingReason) });
                 }
-                _context.AstronautDetails.Update(astronautDetail);
+
+                var newDuty = new AstronautDuty
+                {
+                    PersonId = person.Id,
+                    Rank = rank,
+                    DutyTitle = dutyTitle,
+                    DutyStartDate = startDate.Value,
+                    Reason = reason,
+                };
+                _context.AstronautDuties.Add(newDuty);
+
+                var ordered = timeline.Append(newDuty).OrderBy(d => d.DutyStartDate).ToList();
+                var rechained = Rechain(ordered, newDuty);
+
+                var detail = await _context.AstronautDetails.FirstOrDefaultAsync(d => d.PersonId == person.Id, cancellationToken);
+                if (detail is null)
+                {
+                    detail = new AstronautDetail { PersonId = person.Id };
+                    _context.AstronautDetails.Add(detail);
+                }
+
+                var latest = ordered[^1];
+                detail.CurrentRank = latest.Rank;
+                detail.CurrentDutyTitle = latest.DutyTitle;
+                detail.CareerStartDate = ordered[0].DutyStartDate;
+                detail.CareerEndDate = DutyTitles.IsRetired(latest.DutyTitle) ? latest.DutyStartDate.AddDays(-1) : null;
+
+                await _context.SaveChangesAsync(cancellationToken);
+
+                _context.AuditEntries.Add(new AuditEntry
+                {
+                    EntityType = AuditEntityType.Duty,
+                    EntityId = newDuty.Id,
+                    Action = AuditActions.Created,
+                    Actor = actor,
+                    Reason = reason,
+                    TimestampUtc = _time.GetUtcNow().UtcDateTime,
+                    BeforeJson = rechained.Count == 0
+                        ? null
+                        : JsonSerializer.Serialize(new { rechained = rechained.Select(r => new { dutyId = r.Duty.Id, dutyEndDate = r.Before }) }),
+                    AfterJson = JsonSerializer.Serialize(new
+                    {
+                        duty = new
+                        {
+                            id = newDuty.Id,
+                            personId = newDuty.PersonId,
+                            rank = newDuty.Rank,
+                            dutyTitle = newDuty.DutyTitle,
+                            dutyStartDate = newDuty.DutyStartDate,
+                            dutyEndDate = newDuty.DutyEndDate,
+                            reason = newDuty.Reason,
+                        },
+                        rechained = rechained.Select(r => new { dutyId = r.Duty.Id, dutyEndDate = r.Duty.DutyEndDate }),
+                    }),
+                });
+                await _context.SaveChangesAsync(cancellationToken);
+
+                await transaction.CommitAsync(cancellationToken);
+
+                return new CreateAstronautDutyResult
+                {
+                    Id = newDuty.Id,
+                    ResponseCode = (int)HttpStatusCode.Created,
+                };
+            }
+            catch (DbUpdateException ex) when (DbErrors.IsUniqueViolation(ex, "AstronautDuty.DutyStartDate"))
+            {
+                // A concurrent request added a duty on the same date.
+                throw ConflictException.DutyStartDateTaken();
+            }
+        }
+
+        /// <summary>
+        /// Sets every duty's end date to the day before the next one starts (null for the latest) and returns
+        /// the existing duties whose end date changed, with the value they had before.
+        /// </summary>
+        private static List<(AstronautDuty Duty, DateOnly? Before)> Rechain(List<AstronautDuty> ordered, AstronautDuty newDuty)
+        {
+            var changed = new List<(AstronautDuty, DateOnly?)>();
+
+            for (var i = 0; i < ordered.Count; i++)
+            {
+                var duty = ordered[i];
+                DateOnly? end = i + 1 < ordered.Count ? ordered[i + 1].DutyStartDate.AddDays(-1) : null;
+
+                if (duty.DutyEndDate != end)
+                {
+                    if (!ReferenceEquals(duty, newDuty))
+                    {
+                        changed.Add((duty, duty.DutyEndDate));
+                    }
+
+                    duty.DutyEndDate = end;
+                }
             }
 
-            query = $"SELECT * FROM [AstronautDuty] WHERE {person.Id} = PersonId Order By DutyStartDate Desc";
+            return changed;
+        }
 
-            var astronautDuty = await _context.Connection.QueryFirstOrDefaultAsync<AstronautDuty>(query);
-
-            if (astronautDuty != null)
+        /// <summary>The message for the missing reason when the duty history makes the new duty a correction, otherwise null.</summary>
+        private static string? HistoryReasonRequiredMessage(List<AstronautDuty> timeline, DateOnly startDate)
+        {
+            if (timeline.Count > 0 && startDate < timeline[^1].DutyStartDate)
             {
-                astronautDuty.DutyEndDate = request.DutyStartDate.AddDays(-1).Date;
-                _context.AstronautDuties.Update(astronautDuty);
+                return "A reason is required when the duty starts before the person's latest duty.";
             }
 
-            var newAstronautDuty = new AstronautDuty()
+            if (timeline.Count > 0 && DutyTitles.IsRetired(timeline[^1].DutyTitle))
             {
-                PersonId = person.Id,
-                Rank = request.Rank,
-                DutyTitle = request.DutyTitle,
-                DutyStartDate = request.DutyStartDate.Date,
-                DutyEndDate = null
-            };
+                return "A reason is required to add a duty after the person has retired.";
+            }
 
-            await _context.AstronautDuties.AddAsync(newAstronautDuty);
+            return null;
+        }
 
-            await _context.SaveChangesAsync();
+        private static string? ValidateText(string? raw, string field, string label, int maxLength, List<FieldError> errors)
+        {
+            var value = (raw ?? string.Empty).Trim();
 
-            return new CreateAstronautDutyResult()
+            if (value.Length == 0)
             {
-                Id = newAstronautDuty.Id
-            };
+                errors.Add(new FieldError(field, $"The {label} is required."));
+                return null;
+            }
+
+            if (value.Length > maxLength)
+            {
+                errors.Add(new FieldError(field, $"The {label} must be at most {maxLength} characters."));
+                return null;
+            }
+
+            return value;
+        }
+
+        /// <summary>Trimmed; blank becomes null. A reason that is not needed is still stored.</summary>
+        private static string? ValidateReason(string? raw, List<FieldError> errors)
+        {
+            var value = raw?.Trim();
+
+            if (string.IsNullOrEmpty(value))
+            {
+                return null;
+            }
+
+            if (value.Length > MaxReasonLength)
+            {
+                errors.Add(new FieldError("reason", $"The reason must be at most {MaxReasonLength} characters."));
+                return null;
+            }
+
+            return value;
+        }
+
+        private static DateOnly? ParseDate(string? raw, List<FieldError> errors)
+        {
+            // The first day of the calendar cannot be a start date: the day before it does not exist.
+            if (DateOnly.TryParseExact(raw?.Trim(), DateFormat, CultureInfo.InvariantCulture, DateTimeStyles.None, out var date)
+                && date > DateOnly.MinValue)
+            {
+                return date;
+            }
+
+            errors.Add(new FieldError("dutyStartDate", "The duty start date must be a date in the form yyyy-MM-dd."));
+            return null;
         }
     }
 
     public class CreateAstronautDutyResult : BaseResponse
     {
-        public int? Id { get; set; }
+        public int Id { get; set; }
     }
 }

@@ -64,27 +64,28 @@ namespace StargateAPI.Controllers
         }
 
         [HttpPost("")]
-        public async Task<IActionResult> CreatePerson([FromBody] string name)
+        [ProducesResponseType(typeof(CreatePersonResult), StatusCodes.Status201Created)]
+        [ProducesResponseType(typeof(BaseResponse), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(BaseResponse), StatusCodes.Status409Conflict)]
+        public async Task<IActionResult> CreatePerson([FromBody] CreatePerson request)
         {
-            try
-            {
-                var result = await _mediator.Send(new CreatePerson()
-                {
-                    Name = name
-                });
+            var result = await _mediator.Send(request);
+            return this.GetResponse(result);
+        }
 
-                return this.GetResponse(result);
-            }
-            catch (Exception ex)
+        [HttpPut("{name}")]
+        [ProducesResponseType(typeof(RenamePersonResult), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(BaseResponse), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(BaseResponse), StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(BaseResponse), StatusCodes.Status409Conflict)]
+        public async Task<IActionResult> RenamePerson(string name, [FromBody] RenamePersonRequest request)
+        {
+            var result = await _mediator.Send(new RenamePerson
             {
-                return this.GetResponse(new BaseResponse()
-                {
-                    Message = ex.Message,
-                    Success = false,
-                    ResponseCode = (int)HttpStatusCode.InternalServerError
-                });
-            }
-
+                Name = name,
+                NewName = request.NewName
+            });
+            return this.GetResponse(result);
         }
     }
 }

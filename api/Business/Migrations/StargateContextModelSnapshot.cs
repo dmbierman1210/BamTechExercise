@@ -17,6 +17,50 @@ namespace StargateAPI.Business.Migrations
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "8.0.4");
 
+            modelBuilder.Entity("StargateAPI.Business.Auditing.AuditEntry", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Actor")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("AfterJson")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("BeforeJson")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("EntityId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("EntityType")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Reason")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("TimestampUtc")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EntityType", "EntityId");
+
+                    b.ToTable("AuditEntry");
+                });
+
             modelBuilder.Entity("StargateAPI.Business.Data.AstronautDetail", b =>
                 {
                     b.Property<int>("Id")

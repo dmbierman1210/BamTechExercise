@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using StargateAPI.Business.Auditing;
 using StargateAPI.Business.Commands;
 using StargateAPI.Business.Data;
 
@@ -18,6 +19,10 @@ builder.Services.AddMediatR(cfg =>
     cfg.AddRequestPreProcessor<CreateAstronautDutyPreProcessor>();
     cfg.RegisterServicesFromAssemblies(typeof(Program).Assembly);
 });
+
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<IActorProvider, HeaderActorProvider>();
+builder.Services.AddSingleton(TimeProvider.System);
 
 var app = builder.Build();
 

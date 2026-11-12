@@ -1,5 +1,6 @@
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using StargateAPI.Business.Data;
 
 namespace StargateAPI.Tests;
@@ -28,6 +29,12 @@ public sealed class TestDatabase : IDisposable
 
     /// <summary>A new context over the same database, like a new request scope.</summary>
     public StargateContext CreateContext() => new(_options);
+
+    public StargateContext CreateContext(params IInterceptor[] interceptors) =>
+        new(new DbContextOptionsBuilder<StargateContext>()
+            .UseSqlite(_connection)
+            .AddInterceptors(interceptors)
+            .Options);
 
     public void Dispose() => _connection.Dispose();
 }

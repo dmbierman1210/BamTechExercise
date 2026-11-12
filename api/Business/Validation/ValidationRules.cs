@@ -60,8 +60,9 @@ namespace StargateAPI.Business.Validation
     {
         private const int SqliteConstraint = 19;
 
-        public static bool IsUniqueViolation(DbUpdateException exception) =>
+        public static bool IsUniqueViolation(DbUpdateException exception, string column) =>
             exception.InnerException is SqliteException { SqliteErrorCode: SqliteConstraint } sqlite
-            && sqlite.Message.Contains("UNIQUE", StringComparison.OrdinalIgnoreCase);
+            && sqlite.Message.Contains("UNIQUE", StringComparison.OrdinalIgnoreCase)
+            && sqlite.Message.Contains(column, StringComparison.OrdinalIgnoreCase);
     }
 }

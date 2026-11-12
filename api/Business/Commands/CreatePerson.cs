@@ -40,6 +40,8 @@ namespace StargateAPI.Business.Commands
                 throw new ValidationFailedException(errors);
             }
 
+            using var writeGate = await WriteGate.EnterAsync(cancellationToken);
+
             if (await PersonNameRules.IsTakenAsync(_context, name, null, cancellationToken))
             {
                 throw ConflictException.DuplicateName();
@@ -72,7 +74,7 @@ namespace StargateAPI.Business.Commands
                     ResponseCode = (int)HttpStatusCode.Created,
                 };
             }
-            catch (DbUpdateException ex) when (DbErrors.IsUniqueViolation(ex))
+            catch (DbUpdateException ex) when (DbErrors.IsUniqueViolation(ex, "Person.Name"))
             {
                 // A concurrent request took the name between the check and the insert.
                 throw ConflictException.DuplicateName();

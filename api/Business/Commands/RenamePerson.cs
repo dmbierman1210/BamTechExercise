@@ -47,6 +47,8 @@ namespace StargateAPI.Business.Commands
                 throw new ValidationFailedException(errors);
             }
 
+            using var writeGate = await WriteGate.EnterAsync(cancellationToken);
+
             var person = await (await _context.PeopleNamedAsync(request.Name, cancellationToken)).FirstOrDefaultAsync(cancellationToken);
 
             if (person is null)
@@ -84,7 +86,7 @@ namespace StargateAPI.Business.Commands
                 // One SaveChanges is one transaction: the rename and its audit entry succeed or fail together.
                 await _context.SaveChangesAsync(cancellationToken);
             }
-            catch (DbUpdateException ex) when (DbErrors.IsUniqueViolation(ex))
+            catch (DbUpdateException ex) when (DbErrors.IsUniqueViolation(ex, "Person.Name"))
             {
                 throw ConflictException.DuplicateName();
             }

@@ -73,6 +73,8 @@ namespace StargateAPI.Business.Commands
                 throw new ValidationFailedException(errors);
             }
 
+            using var writeGate = await WriteGate.EnterAsync(cancellationToken);
+
             var person = await (await _context.PeopleNamedAsync(name, cancellationToken)).FirstOrDefaultAsync(cancellationToken);
 
             if (person is null)
@@ -164,7 +166,7 @@ namespace StargateAPI.Business.Commands
                     ResponseCode = (int)HttpStatusCode.Created,
                 };
             }
-            catch (DbUpdateException ex) when (DbErrors.IsUniqueViolation(ex))
+            catch (DbUpdateException ex) when (DbErrors.IsUniqueViolation(ex, "AstronautDuty.DutyStartDate"))
             {
                 // A concurrent request added a duty on the same date.
                 throw ConflictException.DutyStartDateTaken();

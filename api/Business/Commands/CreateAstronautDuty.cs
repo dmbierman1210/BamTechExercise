@@ -180,7 +180,9 @@ namespace StargateAPI.Business.Commands
 
         private static DateOnly? ParseDate(string? raw, List<FieldError> errors)
         {
-            if (DateOnly.TryParseExact(raw?.Trim(), DateFormat, CultureInfo.InvariantCulture, DateTimeStyles.None, out var date))
+            // The first day of the calendar cannot be a start date: the day before it does not exist.
+            if (DateOnly.TryParseExact(raw?.Trim(), DateFormat, CultureInfo.InvariantCulture, DateTimeStyles.None, out var date)
+                && date > DateOnly.MinValue)
             {
                 return date;
             }

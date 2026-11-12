@@ -263,6 +263,7 @@ public class CreateAstronautDutyHandlerTests
     [InlineData("")]
     [InlineData("2024-02-30")]
     [InlineData("2024-3-1")]
+    [InlineData("0001-01-01")]
     public async Task A_missing_or_invalid_date_is_400(string? date)
     {
         using var db = new TestDatabase();

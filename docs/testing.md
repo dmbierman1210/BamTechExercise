@@ -13,10 +13,9 @@ and the run **fails if total line coverage drops below 50%**. Only generated cod
 and anything marked `[GeneratedCode]`. `Program.cs` is hand-written and counted. The report is written to `coverage/`
 (git-ignored).
 
-Measured when this was written: total line coverage 99.5% and `Business/` 99.3% (85% total if the migrations are
-counted, because generated migration code is mostly not exercised line by line). The floor is deliberately lower than
-the current number so that it catches a regression without blocking small, well-tested changes; the target for
-`Business/` is 70% or more.
+Last measured (STAR-19, 166 tests, `./tests/coverage.ps1`): total line coverage 98.99% and `Business/` 98.7%. The floor is
+deliberately lower than the current number so that it catches a regression without blocking small, well-tested
+changes; the target for `Business/` is 70% or more.
 
 ## How the tests are built
 

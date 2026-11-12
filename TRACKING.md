@@ -56,6 +56,7 @@ Last updated: 2026-11-12.
 | D12 | Future start dates are **allowed but need a reason** (owner, 2026-11-11; supersedes an earlier "reject" answer). `dutyStartDate` later than today (UTC) without a non-blank `reason` -> 400 with a field error on `reason`. STAR-7 (#8) accepts future dates like any later date; the `Reason` column and the required-reason rule land in STAR-8 (#9). Contract in STAR-2 (#3). |
 | D13 | GitHub Actions cannot be relied on (monthly minutes used up). All tests and checks run locally and their results go on the story as a comment (protocol rule 13). STAR-17 still writes the workflow, but it is validated locally and not run. Owner, 2026-11-12. |
 | D14 | Owner decisions, 2026-11-12, all taking the PM recommendation: (1) the UI gets the API address from build-time environment config, localhost only; (2) the 500 `traceId` is documented in the contract via its own contract-change PR; (3) a case-only rename is applied and audited, an identical name is a no-op; (4) the person page does not take focus on a fresh load or direct link, only after in-app navigation. Recorded in STAR-18 (#19). |
+| D15 | STAR-20 refinement (owner, 2026-11-12): a correction may change rank, title and start date (a date that would reorder duties is 409; void and add instead); one story delivered as three PRs in order (contract-change PR, API, UI), 8 pts; a voided duty is final (no restore). Routes proposed for the contract PR: `PUT /AstronautDuty/{id}`, `POST /AstronautDuty/{id}/void`, `GET /AstronautDuty/{name}/history`. Not marathon-ready (human contract gate); runs after STAR-18 and STAR-19 merge. See issue #21. |
 
 ## Status table
 
@@ -82,7 +83,7 @@ Status: Proposed (issue exists with acceptance criteria, not yet startable) | No
 | - | STAR-17 | [#18](https://github.com/dmbierman1210/BamTechExercise/issues/18) | [CI] GitHub Actions: build, test, coverage on every PR | HARD | P3 | 2 | In Review (PR #42; CI not yet run, billing) | copilot-790541 | STAR-16 |
 | - | STAR-18 | [#19](https://github.com/dmbierman1210/BamTechExercise/issues/19) | [INTEG] Wire UI to the live API: CORS, remove mock, end-to-end run-and-look | W3 | P1 | 5 | In Progress | copilot-647872 | STAR-9, STAR-14 merged |
 | - | STAR-19 | [#20](https://github.com/dmbierman1210/BamTechExercise/issues/20) | [DOC] README: run/test steps, design decisions, interview talking points | W3 | P3 | 1 | Proposed | - | STAR-18 |
-| - | STAR-20 | [#21](https://github.com/dmbierman1210/BamTechExercise/issues/21) | [RULES] Correct or void a duty entry with a reason and audit trail (stretch goal) | - | P3 | 5 | Proposed | - | STAR-8 |
+| - | STAR-20 | [#21](https://github.com/dmbierman1210/BamTechExercise/issues/21) | [RULES] Correct or void a duty entry with a reason and audit trail (stretch goal) | - | P3 | 8 | Proposed | - | STAR-8, STAR-18 and STAR-19 merged |
 | - | STAR-21 | [#22](https://github.com/dmbierman1210/BamTechExercise/issues/22) | [AUTH] Login: replace the self-declared actor with an authenticated identity (stretch goal; needs owner decisions on accounts, sessions, roles) | - | P3 | 8 | Proposed | - | STAR-20 |
 
 Every API story includes its own unit tests and keeps the build warning-free.

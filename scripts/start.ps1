@@ -33,7 +33,7 @@ function Stop-Tree($process) {
 
 $env:ASPNETCORE_ENVIRONMENT = 'Development'
 Write-Host 'Starting the API on http://localhost:5204 and the UI on http://localhost:4200 (Ctrl+C stops both)...'
-$api = Start-Process dotnet -ArgumentList @('run', '--project', (Join-Path $root 'api'), '--no-launch-profile', '--urls', 'http://localhost:5204') -NoNewWindow -PassThru
+$api = Start-Process dotnet -ArgumentList @('run', '--project', "`"$(Join-Path $root 'api')`"", '--no-launch-profile', '--urls', 'http://localhost:5204') -WorkingDirectory (Join-Path $root 'api') -NoNewWindow -PassThru
 $app = Start-Process $npm -ArgumentList @('run', 'start') -WorkingDirectory $ui -NoNewWindow -PassThru
 
 try {

@@ -26,7 +26,7 @@ Run everything from this `ui/` folder.
 | `npm test`                                | One non-watch run of the app tests (`test:ui`) and the mock-server tests (`test:mock`). Exits by itself, fine for CI.                                                |
 | `npm run build`                           | Production build into `dist/acts-ui` (uses `environment.ts`, the real API URL). Enforces the budgets below.                                                          |
 | `npm run a11y:browser`                    | axe-core, all rules incl. color-contrast, in a real browser against the running app + mock (see "Accessibility"). Needs playwright-core, which is not a dependency.  |
-| `npm run walkthrough`                     | Keyboard-only walkthrough (Acting as, add person, add duty, rename) in a real browser. Same prerequisites; run it on a fresh mock.                                   |
+| `npm run walkthrough`                     | Keyboard-only walkthrough (Acting as, add person, add duty, rename) in a real browser. Same prerequisites (`npm run start:with-mock`); run it on a fresh mock.       |
 
 ## Structure
 

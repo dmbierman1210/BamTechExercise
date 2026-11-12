@@ -1,0 +1,98 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  api:
+    name: API build, test, coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', '.config/dotnet-tools.json') }}
+          restore-keys: nuget-${{ runner.os }}-
+
+      - name: Restore
+        run: dotnet restore StargateAPI.sln
+
+      # Warnings are errors, except NuGet vulnerability advisories (NU1901-NU1904): a newly published advisory
+      # must not turn an unrelated PR red; it stays visible as a warning.
+      - name: Build (warnings are errors)
+        run: dotnet build StargateAPI.sln --configuration Release --no-restore -warnaserror "-p:WarningsNotAsErrors=NU1901%3BNU1902%3BNU1903%3BNU1904"
+
+      # The test project fails the run when total line coverage is below 50%.
+      - name: Test with coverage threshold
+        run: dotnet test StargateAPI.sln --configuration Release --no-build
+
+      - name: Coverage report
+        if: ${{ !cancelled() && hashFiles('coverage/coverage.cobertura.xml') != '' }}
+        run: |
+          dotnet tool restore
+          dotnet reportgenerator "-reports:coverage/coverage.cobertura.xml" "-targetdir:coverage/report" "-reporttypes:Html;TextSummary"
+          cat coverage/report/Summary.txt >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload coverage report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage/
+          if-no-files-found: warn
+
+  ui:
+    name: UI lint, test, build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: ui
+    steps:
+      - uses: actions/checkout@v4
+
+      # The UI lane may not exist on a branch yet; every later step is skipped without it.
+      - name: Check for the UI project
+        id: ui
+        working-directory: .
+        run: |
+          if [ -f ui/package.json ]; then echo "present=true" >> "$GITHUB_OUTPUT"; else echo "present=false" >> "$GITHUB_OUTPUT"; echo "No ui/package.json: UI job skipped."; fi
+
+      - uses: actions/setup-node@v4
+        if: steps.ui.outputs.present == 'true'
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: ui/package-lock.json
+
+      - name: Install
+        if: steps.ui.outputs.present == 'true'
+        run: npm ci
+
+      - name: Lint
+        if: steps.ui.outputs.present == 'true'
+        run: npm run lint
+
+      - name: Test
+        if: steps.ui.outputs.present == 'true'
+        run: npm test
+
+      - name: Production build
+        if: steps.ui.outputs.present == 'true'
+        run: npm run build

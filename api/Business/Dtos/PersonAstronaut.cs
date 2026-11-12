@@ -28,7 +28,7 @@ namespace StargateAPI.Business.Dtos
 
         public AstronautStatus AstronautStatus { get; set; }
 
-        // ToUpper keeps the case-insensitive RETIRED comparison translatable to SQL.
+        // ToUpper keeps the case-insensitive retired-title comparison translatable to SQL.
         public static readonly Expression<Func<Person, PersonAstronaut>> Projection = person => new PersonAstronaut
         {
             PersonId = person.Id,

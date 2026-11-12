@@ -1,0 +1,204 @@
+<section
+  class="page acts-page"
+  aria-labelledby="person-heading"
+  [attr.aria-busy]="state().kind === 'loading'"
+>
+  <a mat-button class="back" routerLink="/people" [queryParams]="listState.queryParams()">
+    <mat-icon aria-hidden="true">arrow_back</mat-icon>
+    Back to People
+  </a>
+
+  <header class="header acts-panel">
+    <div class="header-main">
+      <h1 id="person-heading" #heading tabindex="-1">{{ title() }}</h1>
+      @if (person(); as p) {
+        <app-status-badge [status]="p.astronautStatus" />
+        <div class="actions">
+          <button
+            mat-stroked-button
+            type="button"
+            #renameButton
+            appActorRequired="person-write-hint"
+            [attr.aria-expanded]="panel() === 'rename'"
+            (click)="toggle('rename')"
+          >
+            <mat-icon aria-hidden="true">edit</mat-icon>
+            Rename
+          </button>
+          <button
+            mat-flat-button
+            type="button"
+            #dutyButton
+            appActorRequired="person-write-hint"
+            [attr.aria-expanded]="panel() === 'duty'"
+            (click)="toggle('duty')"
+          >
+            <mat-icon aria-hidden="true">add_task</mat-icon>
+            Add duty
+          </button>
+        </div>
+      }
+    </div>
+    @if (person()) {
+      <app-actor-hint id="person-write-hint" />
+    }
+
+    @if (person(); as p) {
+      <dl class="facts">
+        <div>
+          <dt>Current rank</dt>
+          <dd>{{ p.currentRank || 'Not assigned' }}</dd>
+        </div>
+        <div>
+          <dt>Current duty title</dt>
+          <dd>{{ p.currentDutyTitle || 'Not assigned' }}</dd>
+        </div>
+        <div>
+          <dt>Career start</dt>
+          <dd>
+            @if (p.careerStartDate) {
+              <time [attr.datetime]="p.careerStartDate">{{ formatDate(p.careerStartDate) }}</time>
+            } @else {
+              Not applicable
+            }
+          </dd>
+        </div>
+        <div>
+          <dt>Career end</dt>
+          <dd>
+            @if (p.careerEndDate) {
+              <time [attr.datetime]="p.careerEndDate">{{ formatDate(p.careerEndDate) }}</time>
+            } @else if (p.careerStartDate) {
+              Present
+            } @else {
+              Not applicable
+            }
+          </dd>
+        </div>
+        @if (careerLength(); as length) {
+          <div class="career-length">
+            <dt>Career length</dt>
+            <dd>
+              {{ length }}
+              @if (!p.careerEndDate) {
+                <span class="acts-muted">so far</span>
+              }
+            </dd>
+          </div>
+        }
+      </dl>
+    } @else if (state().kind === 'loading') {
+      <div class="skeleton-facts" aria-hidden="true">
+        <span class="acts-skeleton-bar"></span>
+        <span class="acts-skeleton-bar"></span>
+        <span class="acts-skeleton-bar bar-short"></span>
+      </div>
+    }
+  </header>
+
+  @if (person(); as p) {
+    @if (panel() === 'rename') {
+      <app-rename-person-form
+        [currentName]="p.name"
+        (renamed)="onRenamed($event)"
+        (cancelled)="closePanel()"
+        (busy)="writing.set($event)"
+      />
+    } @else if (panel() === 'duty') {
+      <app-add-duty-form
+        [person]="p"
+        [history]="history()"
+        (saved)="onDutySaved()"
+        (cancelled)="closePanel()"
+        (busy)="writing.set($event)"
+      />
+    }
+  }
+
+  @switch (state().kind) {
+    @case ('loading') {
+      <ul class="skeleton-list" aria-hidden="true">
+        @for (row of skeletonRows; track row) {
+          <li class="skeleton-entry">
+            <span class="acts-skeleton-bar bar-name"></span>
+            <span class="acts-skeleton-bar"></span>
+          </li>
+        }
+      </ul>
+    }
+    @case ('not-found') {
+      <app-state-notice illustration="not-found" heading="Person not found">
+        <p class="acts-muted">No one named “{{ name() }}” is known to ACTS.</p>
+        <a mat-flat-button routerLink="/people" [queryParams]="listState.queryParams()">
+          <mat-icon aria-hidden="true">arrow_back</mat-icon>
+          Back to People
+        </a>
+      </app-state-notice>
+    }
+    @case ('error') {
+      <app-state-notice illustration="error" heading="Could not load duties" [alert]="true">
+        <p class="message">{{ errorMessage() }}</p>
+        <button mat-flat-button type="button" (click)="retry()">
+          <mat-icon aria-hidden="true">refresh</mat-icon>
+          Retry
+        </button>
+      </app-state-notice>
+    }
+    @case ('loaded') {
+      @if (entries().length === 0) {
+        <app-state-notice illustration="duties" heading="No astronaut assignments">
+          <p class="acts-muted">{{ title() }} has no duty on record yet.</p>
+        </app-state-notice>
+      } @else {
+        <h2 id="timeline-heading" class="timeline-title">Duty timeline</h2>
+        <ol class="timeline" aria-labelledby="timeline-heading">
+          @for (entry of entries(); track entry.duty.id; let i = $index) {
+            <li
+              class="entry acts-entry-in entry-{{ entry.kind }}"
+              [style.--i]="i < 8 ? i : 8"
+              [attr.aria-current]="entry.kind === 'current' ? 'true' : null"
+            >
+              <span class="marker" aria-hidden="true">
+                <mat-icon>{{ entry.icon }}</mat-icon>
+              </span>
+              <div class="entry-body">
+                <div class="entry-head">
+                  <h3 class="entry-title">
+                    <span class="rank">{{ entry.duty.rank }}</span>&ngsp;<span class="duty-title">{{
+                      entry.duty.dutyTitle
+                    }}</span>
+                  </h3>
+                  @if (entry.label) {
+                    <span class="chip chip-{{ entry.kind }}">
+                      <mat-icon aria-hidden="true">{{ entry.icon }}</mat-icon>
+                      {{ entry.label }}
+                    </span>
+                  }
+                </div>
+                <p class="dates">
+                  <time [attr.datetime]="entry.duty.dutyStartDate">{{
+                    formatDate(entry.duty.dutyStartDate)
+                  }}</time>
+                  <span aria-hidden="true"> – </span>
+                  <span class="visually-hidden"> to </span>
+                  @if (entry.duty.dutyEndDate) {
+                    <time [attr.datetime]="entry.duty.dutyEndDate">{{
+                      formatDate(entry.duty.dutyEndDate)
+                    }}</time>
+                  } @else {
+                    <span class="present">Present</span>
+                  }
+                </p>
+                @if (entry.duty.reason) {
+                  <p class="reason">
+                    <span class="reason-label">Reason:</span> {{ entry.duty.reason }}
+                  </p>
+                }
+              </div>
+            </li>
+          }
+        </ol>
+      }
+    }
+  }
+</section>

@@ -27,8 +27,9 @@ import { ActorService } from './actor.service';
       <mat-icon aria-hidden="true">badge</mat-icon>
       <span class="acting-as-text">
         @if (actors.actor(); as name) {
-          <span class="acting-as-label">Acting as</span>
-          <span class="acting-as-name">{{ name }}</span>
+          <span class="acting-as-label">Acting as</span>&ngsp;<span class="acting-as-name">{{
+            name
+          }}</span>
         } @else {
           <span class="acting-as-name">Set your name</span>
         }

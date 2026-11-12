@@ -144,6 +144,12 @@ a {
   color: var(--acts-text-muted);
 }
 
+.acts-discard-hint {
+  margin: 0;
+  color: var(--acts-warn);
+  font-size: 0.9rem;
+}
+
 .acts-panel {
   background: var(--acts-surface);
   border: 1px solid var(--acts-border);
@@ -154,13 +160,100 @@ a {
 // Write actions that need an actor name (see ActorRequiredDirective).
 .acts-actor-blocked {
   cursor: not-allowed;
+  opacity: 0.6;
 }
 
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+// Empty, not-found and error states (StateNotice).
+.acts-notice {
+  display: grid;
+  justify-items: center;
+  gap: var(--acts-space-3);
+  padding: var(--acts-space-8) var(--acts-space-4);
+  text-align: center;
+
+  h1,
+  h2,
+  p {
+    margin: 0;
+  }
+
+  h1:focus {
+    outline: none;
+  }
+}
+
+// Loading placeholders (bars inside skeleton cards).
+.acts-skeleton-bar {
+  display: block;
+  height: 0.9rem;
+  border-radius: 0.25rem;
+  background: var(--acts-border);
+
+  &.bar-name {
+    width: 50%;
+    height: 1.2rem;
+  }
+
+  &.bar-short {
+    width: 35%;
+  }
+}
+
+// Motion is opt-in: nothing below exists when the user prefers reduced motion.
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes acts-pulse {
+    50% {
+      opacity: 0.45;
+    }
+  }
+
+  @keyframes acts-page-in {
+    from {
+      opacity: 0;
+      transform: translateY(0.5rem);
+    }
+  }
+
+  @keyframes acts-entry-in {
+    from {
+      opacity: 0;
+      transform: translateX(-0.75rem);
+    }
+  }
+
+  .acts-skeleton-bar {
+    animation: acts-pulse 1.4s ease-in-out infinite;
+  }
+
+  .acts-page {
+    animation: acts-page-in 240ms ease-out;
+  }
+
+  // Timeline entries slide in one after the other (--i is the entry's index, capped by the template).
+  .acts-entry-in {
+    animation: acts-entry-in 320ms ease-out backwards;
+    animation-delay: calc(var(--i, 0) * 45ms);
+  }
+}
+
+// Safety net for anything that animates by itself (Material components, third-party CSS).
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
+    animation-delay: 0s !important;
     transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

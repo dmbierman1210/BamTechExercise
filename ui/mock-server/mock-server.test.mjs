@@ -29,7 +29,7 @@ describe('mock API (seeded)', () => {
   });
   after(() => ctx.server.close());
 
-  it('lists the three seeded people with derived summaries', async () => {
+  it('lists the four seeded people with derived summaries', async () => {
     const { status, body } = await ctx.call('GET', '/Person');
     assert.equal(status, 200);
     assert.deepEqual(
@@ -38,6 +38,7 @@ describe('mock API (seeded)', () => {
         ['John Doe', 'Active'],
         ['Jane Roe', 'Retired'],
         ['Richard Roe', 'None'],
+        ['Ada Stone', 'Active'],
       ],
     );
     const jane = body.people[1];
@@ -67,6 +68,21 @@ describe('mock API (seeded)', () => {
     assert.equal(body.astronautDuties[1].dutyEndDate, '2023-04-30');
     assert.equal(body.astronautDuties[2].dutyEndDate, '2021-09-09');
     assert.equal(body.person.careerStartDate, '2020-01-15');
+  });
+
+  it('seeds a person who returned from retirement: RETIRED mid-timeline, Active again', async () => {
+    const { body } = await ctx.call('GET', '/AstronautDuty/Ada%20Stone');
+    assert.deepEqual(
+      body.astronautDuties.map((d) => [d.dutyTitle, d.dutyStartDate, d.dutyEndDate, d.reason]),
+      [
+        ['Pilot', '2018-03-01', null, 'Returned from retirement'],
+        ['RETIRED', '2015-07-01', '2018-02-28', null],
+        ['Flight Engineer', '2010-09-01', '2015-06-30', null],
+        ['Pilot', '2005-04-11', '2010-08-31', null],
+      ],
+    );
+    assert.equal(body.person.astronautStatus, 'Active');
+    assert.equal(body.person.careerEndDate, null);
   });
 
   it('returns an empty duty list for a person with no duties', async () => {
@@ -160,7 +176,7 @@ describe('mock API (writes)', () => {
       success: true,
       message: 'Successful',
       responseCode: 201,
-      id: 4,
+      id: 5,
     });
     const dup = await ctx.call('POST', '/Person', { body: { name: 'ann lee' } });
     assert.equal(dup.status, 409);
@@ -217,9 +233,9 @@ describe('mock API (writes)', () => {
       duty({ dutyStartDate: '2022-02-02', reason: ' Correction ' }),
     );
     assert.equal(backOk.status, 201);
-    assert.equal(backOk.body.id, 7);
+    assert.equal(backOk.body.id, 11);
     const timeline = (await ctx.call('GET', '/AstronautDuty/John%20Doe')).body.astronautDuties;
-    const inserted = timeline.find((d) => d.id === 7);
+    const inserted = timeline.find((d) => d.id === 11);
     assert.equal(inserted.reason, 'Correction');
     assert.equal(inserted.dutyEndDate, '2023-04-30');
     assert.equal(timeline.find((d) => d.id === 2).dutyEndDate, '2022-02-01');

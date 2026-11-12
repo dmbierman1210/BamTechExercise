@@ -8,11 +8,9 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/people-page').then((m) => m.PeoplePage),
   },
   {
-    // Placeholder until STAR-12 builds the person page.
     path: 'people/:name',
     title: 'Person | Stargate ACTS',
-    loadComponent: () =>
-      import('./pages/person-placeholder-page').then((m) => m.PersonPlaceholderPage),
+    loadComponent: () => import('./pages/person-page').then((m) => m.PersonPage),
   },
   {
     path: '**',

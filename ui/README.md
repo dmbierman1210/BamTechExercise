@@ -39,7 +39,8 @@ ui/
       api-error.ts        ApiError (status, message, errors[]) + envelope mapping
       error.interceptor.ts  Maps every failed call to ApiError
     core/                 "Acting as": ActorService, interceptor, dialog, toolbar control, ActorRequiredDirective
-    pages/                People list (`/people`), person placeholder (`/people/:name`, replaced by STAR-12), 404
+    pages/                People list (`/people`), person detail (`/people/:name`), 404
+    shared/               StatusBadge (icon + text badge) and date helpers (`dates.ts`)
     app.*                 Shell: toolbar, nav (slide-over sidenav on phone widths), router outlet
   src/styles.scss         Theme: Material 3 dark theme + --acts-* CSS variables (colors, spacing, typography)
 ```
@@ -81,7 +82,8 @@ characters, trimmed). The toolbar's **Acting as** control asks for a name, store
 
 Plain Node (no dependencies), stateful in memory (restart to reset). Seeded from the contract examples:
 John Doe (active, 3 duties), Jane Roe (retired, 3 duties ending in `RETIRED`, consistent with her list entry),
-Richard Roe (no duties). Next ids are person 4 and duty 7.
+Richard Roe (no duties) and Ada Stone (returned from retirement: Pilot 2005, Flight Engineer 2010, `RETIRED` 2015, then
+Pilot 2018 with the reason "Returned from retirement"; Active again, no career end). Next ids are person 5 and duty 11.
 
 | Setting | Effect |
 | --- | --- |
@@ -121,9 +123,30 @@ Invalid values fall back to the defaults. Filter changes use `replaceUrl`, so th
 that link back to the list should use `PeopleListState` (`pages/people-list-state.ts`), which remembers the last
 params: `<a routerLink="/people" [queryParams]="listState.queryParams()">Back to People</a>`.
 
+## Person detail (`/people/:name`)
+
+Calls `DutyService.getAstronautDutiesByName` (`GET /AstronautDuty/{name}`, name URL-encoded; the route param is decoded
+by the router, so spaces, `/`, `?` and `%` work). The heading (focused after navigation) is the route name until the
+response gives the canonical one. Header: status badge (`shared/status-badge.ts`, also used by the list), current rank
+and duty title, career start and end ("Present" while there is no end) and the career length ("5 years, 3 months", from
+the career start to the career end or today; for a returned-from-retirement person it runs to today, "so far").
+
+The timeline is an `<ol>` of duties, newest first: rank, title, start to end (or "Present"), and the reason when there
+is one. The open duty is highlighted with a "Current" label and `aria-current`; a `RETIRED` duty has a dashed amber
+frame and a "Retired" label, so status never relies on color. States: loading skeleton, "Person not found" for a 404
+(link back), "No astronaut assignments" for no duties, and a retryable error with the API message. "Back to People"
+restores the list's `q`/`status`/`sort` through `PeopleListState`.
+
+Dates: `yyyy-MM-dd` values are never passed to `new Date(string)` (that is UTC midnight, so the day shifts west of
+Greenwich). `shared/dates.ts` splits the parts, formats with `Intl.DateTimeFormat(locale, { dateStyle: 'medium',
+timeZone: 'UTC' })` using the browser locale and does the career-length math on integers. `dates.spec.ts` runs it with
+`TZ` set to a negative-offset zone (America/Los_Angeles, Pacific/Honolulu) and a positive one (Pacific/Kiritimati).
+
 ## Screenshots
 
 `docs/screenshots/`: `star-10-shell-desktop.png` (1280 px), `star-10-shell-phone.png` (390 px),
 `star-11-list-desktop.png`, `star-11-list-phone.png`, `star-11-search-filter.png`, `star-11-error.png` (mock stopped),
-`star-11-empty.png` (`MOCK_EMPTY=1`).
+`star-11-empty.png` (`MOCK_EMPTY=1`), `star-12-active-desktop.png` (John Doe), `star-12-retired-desktop.png` (Jane Roe),
+`star-12-returned-desktop.png` (Ada Stone), `star-12-none-desktop.png` (Richard Roe), `star-12-notfound.png`,
+`star-12-active-phone.png` (390 px).
 

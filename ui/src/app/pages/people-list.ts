@@ -1,5 +1,5 @@
 import type { ParamMap, Params } from '@angular/router';
-import type { AstronautStatus, PersonAstronaut } from '../api/models';
+import type { PersonAstronaut } from '../api/models';
 
 export type StatusFilter = 'all' | 'none' | 'active' | 'retired';
 export type SortOrder = 'name-asc' | 'name-desc';
@@ -24,13 +24,6 @@ export const SORT_ORDERS: readonly { value: SortOrder; label: string }[] = [
   { value: 'name-asc', label: 'Name (A to Z)' },
   { value: 'name-desc', label: 'Name (Z to A)' },
 ];
-
-/** Badge text and icon; the label always carries the meaning so color is never the only signal. */
-export const STATUS_BADGE: Record<AstronautStatus, { label: string; icon: string }> = {
-  None: { label: 'Not an astronaut', icon: 'person_off' },
-  Active: { label: 'Active', icon: 'rocket_launch' },
-  Retired: { label: 'Retired', icon: 'military_tech' },
-};
 
 export function parseFilters(params: ParamMap): ListFilters {
   const status = params.get('status');

@@ -4,6 +4,8 @@ using StargateAPI.Business.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
+Dapper.SqlMapper.AddTypeHandler(new DapperDateOnlyHandler());
+
 // Add services to the container.
 
 builder.Services.AddControllers();
@@ -20,6 +22,17 @@ builder.Services.AddMediatR(cfg =>
 });
 
 var app = builder.Build();
+
+using (var scope = app.Services.CreateScope())
+{
+    var context = scope.ServiceProvider.GetRequiredService<StargateContext>();
+    await context.Database.MigrateAsync();
+
+    if (app.Environment.IsDevelopment())
+    {
+        await DevelopmentDataSeeder.SeedAsync(context);
+    }
+}
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

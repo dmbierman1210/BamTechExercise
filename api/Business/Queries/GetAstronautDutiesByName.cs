@@ -31,6 +31,14 @@ namespace StargateAPI.Business.Queries
 
             result.Person = person;
 
+            if (person is null)
+            {
+                result.Success = false;
+                result.Message = "Person not found";
+                result.ResponseCode = (int)System.Net.HttpStatusCode.NotFound;
+                return result;
+            }
+
             query = $"SELECT * FROM [AstronautDuty] WHERE {person.PersonId} = PersonId Order By DutyStartDate Desc";
 
             var duties = await _context.Connection.QueryAsync<AstronautDuty>(query);
@@ -44,7 +52,7 @@ namespace StargateAPI.Business.Queries
 
     public class GetAstronautDutiesByNameResult : BaseResponse
     {
-        public PersonAstronaut Person { get; set; }
+        public PersonAstronaut? Person { get; set; }
         public List<AstronautDuty> AstronautDuties { get; set; } = new List<AstronautDuty>();
     }
 }

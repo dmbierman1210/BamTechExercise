@@ -1,4 +1,4 @@
-﻿using Dapper;
+using Dapper;
 using MediatR;
 using MediatR.Pipeline;
 using Microsoft.EntityFrameworkCore;
@@ -34,7 +34,8 @@ namespace StargateAPI.Business.Commands
 
             if (person is null) throw new BadHttpRequestException("Bad Request");
 
-            var verifyNoPreviousDuty = _context.AstronautDuties.FirstOrDefault(z => z.DutyTitle == request.DutyTitle && z.DutyStartDate == request.DutyStartDate);
+            var startDate = DateOnly.FromDateTime(request.DutyStartDate);
+            var verifyNoPreviousDuty = _context.AstronautDuties.FirstOrDefault(z => z.DutyTitle == request.DutyTitle && z.DutyStartDate == startDate);
 
             if (verifyNoPreviousDuty is not null) throw new BadHttpRequestException("Bad Request");
 
@@ -55,7 +56,8 @@ namespace StargateAPI.Business.Commands
 
             var query = $"SELECT * FROM [Person] WHERE \'{request.Name}\' = Name";
 
-            var person = await _context.Connection.QueryFirstOrDefaultAsync<Person>(query);
+            var person = await _context.Connection.QueryFirstOrDefaultAsync<Person>(query)
+                ?? throw new BadHttpRequestException("Bad Request");
 
             query = $"SELECT * FROM [AstronautDetail] WHERE {person.Id} = PersonId";
 
@@ -67,10 +69,10 @@ namespace StargateAPI.Business.Commands
                 astronautDetail.PersonId = person.Id;
                 astronautDetail.CurrentDutyTitle = request.DutyTitle;
                 astronautDetail.CurrentRank = request.Rank;
-                astronautDetail.CareerStartDate = request.DutyStartDate.Date;
+                astronautDetail.CareerStartDate = DateOnly.FromDateTime(request.DutyStartDate);
                 if (request.DutyTitle == "RETIRED")
                 {
-                    astronautDetail.CareerEndDate = request.DutyStartDate.Date;
+                    astronautDetail.CareerEndDate = DateOnly.FromDateTime(request.DutyStartDate);
                 }
 
                 await _context.AstronautDetails.AddAsync(astronautDetail);
@@ -82,7 +84,7 @@ namespace StargateAPI.Business.Commands
                 astronautDetail.CurrentRank = request.Rank;
                 if (request.DutyTitle == "RETIRED")
                 {
-                    astronautDetail.CareerEndDate = request.DutyStartDate.AddDays(-1).Date;
+                    astronautDetail.CareerEndDate = DateOnly.FromDateTime(request.DutyStartDate).AddDays(-1);
                 }
                 _context.AstronautDetails.Update(astronautDetail);
             }
@@ -93,7 +95,7 @@ namespace StargateAPI.Business.Commands
 
             if (astronautDuty != null)
             {
-                astronautDuty.DutyEndDate = request.DutyStartDate.AddDays(-1).Date;
+                astronautDuty.DutyEndDate = DateOnly.FromDateTime(request.DutyStartDate).AddDays(-1);
                 _context.AstronautDuties.Update(astronautDuty);
             }
 
@@ -102,7 +104,7 @@ namespace StargateAPI.Business.Commands
                 PersonId = person.Id,
                 Rank = request.Rank,
                 DutyTitle = request.DutyTitle,
-                DutyStartDate = request.DutyStartDate.Date,
+                DutyStartDate = DateOnly.FromDateTime(request.DutyStartDate),
                 DutyEndDate = null
             };
 

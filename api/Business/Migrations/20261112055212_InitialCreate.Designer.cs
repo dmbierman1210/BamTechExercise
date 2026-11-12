@@ -8,17 +8,17 @@ using StargateAPI.Business.Data;
 
 #nullable disable
 
-namespace StargateAPI.Migrations
+namespace StargateAPI.Business.Migrations
 {
     [DbContext(typeof(StargateContext))]
-    [Migration("20240122154939_InitialCreate")]
+    [Migration("20261112055212_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
-            modelBuilder.HasAnnotation("ProductVersion", "7.0.15");
+            modelBuilder.HasAnnotation("ProductVersion", "8.0.4");
 
             modelBuilder.Entity("StargateAPI.Business.Data.AstronautDetail", b =>
                 {
@@ -26,10 +26,10 @@ namespace StargateAPI.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
-                    b.Property<DateTime?>("CareerEndDate")
+                    b.Property<DateOnly?>("CareerEndDate")
                         .HasColumnType("TEXT");
 
-                    b.Property<DateTime?>("CareerStartDate")
+                    b.Property<DateOnly>("CareerStartDate")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("CurrentDutyTitle")
@@ -57,10 +57,10 @@ namespace StargateAPI.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
-                    b.Property<DateTime?>("DutyEndDate")
+                    b.Property<DateOnly?>("DutyEndDate")
                         .HasColumnType("TEXT");
 
-                    b.Property<DateTime>("DutyStartDate")
+                    b.Property<DateOnly>("DutyStartDate")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("DutyTitle")
@@ -89,9 +89,14 @@ namespace StargateAPI.Migrations
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("TEXT");
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT")
+                        .UseCollation("NOCASE");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
 
                     b.ToTable("Person");
                 });

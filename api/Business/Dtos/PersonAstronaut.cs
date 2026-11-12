@@ -10,10 +10,9 @@
 
         public string CurrentDutyTitle { get; set; } = string.Empty;
 
-        public DateTime? CareerStartDate { get; set; }
+        public DateOnly? CareerStartDate { get; set; }
 
-        public DateTime? CareerEndDate { get; set; }
-
+        public DateOnly? CareerEndDate { get; set; }
 
     }
 }

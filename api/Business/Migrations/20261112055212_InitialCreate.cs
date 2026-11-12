@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace StargateAPI.Migrations
+namespace StargateAPI.Business.Migrations
 {
     /// <inheritdoc />
     public partial class InitialCreate : Migration
@@ -17,7 +17,7 @@ namespace StargateAPI.Migrations
                 {
                     Id = table.Column<int>(type: "INTEGER", nullable: false)
                         .Annotation("Sqlite:Autoincrement", true),
-                    Name = table.Column<string>(type: "TEXT", nullable: false)
+                    Name = table.Column<string>(type: "TEXT", maxLength: 200, nullable: false, collation: "NOCASE")
                 },
                 constraints: table =>
                 {
@@ -33,8 +33,8 @@ namespace StargateAPI.Migrations
                     PersonId = table.Column<int>(type: "INTEGER", nullable: false),
                     CurrentRank = table.Column<string>(type: "TEXT", nullable: false),
                     CurrentDutyTitle = table.Column<string>(type: "TEXT", nullable: false),
-                    CareerStartDate = table.Column<DateTime>(type: "TEXT", nullable: true),
-                    CareerEndDate = table.Column<DateTime>(type: "TEXT", nullable: true)
+                    CareerStartDate = table.Column<DateOnly>(type: "TEXT", nullable: false),
+                    CareerEndDate = table.Column<DateOnly>(type: "TEXT", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -56,8 +56,8 @@ namespace StargateAPI.Migrations
                     PersonId = table.Column<int>(type: "INTEGER", nullable: false),
                     Rank = table.Column<string>(type: "TEXT", nullable: false),
                     DutyTitle = table.Column<string>(type: "TEXT", nullable: false),
-                    DutyStartDate = table.Column<DateTime>(type: "TEXT", nullable: false),
-                    DutyEndDate = table.Column<DateTime>(type: "TEXT", nullable: true)
+                    DutyStartDate = table.Column<DateOnly>(type: "TEXT", nullable: false),
+                    DutyEndDate = table.Column<DateOnly>(type: "TEXT", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -80,6 +80,12 @@ namespace StargateAPI.Migrations
                 name: "IX_AstronautDuty_PersonId",
                 table: "AstronautDuty",
                 column: "PersonId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Person_Name",
+                table: "Person",
+                column: "Name",
+                unique: true);
         }
 
         /// <inheritdoc />

@@ -15,11 +15,11 @@ namespace StargateAPI.Business.Data
 
         public string DutyTitle { get; set; } = string.Empty;
 
-        public DateTime DutyStartDate { get; set; }
+        public DateOnly DutyStartDate { get; set; }
 
-        public DateTime? DutyEndDate { get; set; }
+        public DateOnly? DutyEndDate { get; set; }
 
-        public virtual Person Person { get; set; }
+        public virtual Person Person { get; set; } = null!;
     }
 
     public class AstronautDutyConfiguration : IEntityTypeConfiguration<AstronautDuty>

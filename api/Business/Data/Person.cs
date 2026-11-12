@@ -23,6 +23,9 @@ namespace StargateAPI.Business.Data
         {
             builder.HasKey(x => x.Id);
             builder.Property(x => x.Id).ValueGeneratedOnAdd();
+            // NOCASE only folds ASCII; handlers still compare names case-insensitively in the application.
+            builder.Property(x => x.Name).IsRequired().HasMaxLength(200).UseCollation("NOCASE");
+            builder.HasIndex(x => x.Name).IsUnique();
             builder.HasOne(z => z.AstronautDetail).WithOne(z => z.Person).HasForeignKey<AstronautDetail>(z => z.PersonId);
             builder.HasMany(z => z.AstronautDuties).WithOne(z => z.Person).HasForeignKey(z => z.PersonId);
         }

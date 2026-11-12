@@ -1,7 +1,7 @@
 # Stargate / ACTS - Program Tracker
 
 Lean index only. Story detail lives in the issue tracker (GitHub Issues on the repo below); do not add per-story notes here.
-Last updated: 2026-11-11.
+Last updated: 2026-11-12.
 
 ## Program configuration
 
@@ -56,7 +56,7 @@ Last updated: 2026-11-11.
 
 ## Status table
 
-Status: Proposed (issue exists with acceptance criteria, not yet startable) | Not Started | In Progress | In Review | Done. On GitHub, In Progress and In Review are the labels `status:in-progress` and `status:in-review`; Done = issue closed by a person after merge. The `marathon-ready` label is added by the PM only when the story's dependencies are Done or inside the same run and no question is open. Today none has it: STAR-3..14 wait for STAR-1 and STAR-2 to be Done, STAR-15..17 wait for the API lane to be merged, STAR-20 needs a design answer.
+Status: Proposed (issue exists with acceptance criteria, not yet startable) | Not Started | In Progress | Done | Done. On GitHub, In Progress and Done are the labels `status:in-progress` and `status:in-review`; Done = issue closed by a person after merge. The `marathon-ready` label is added by the PM only when the story's dependencies are Done or inside the same run and no question is open. The UI lane (STAR-10..14) was labelled and run, and is Done. STAR-15..17 wait for the API lane to be merged, STAR-20 needs a design answer, STAR-21 needs owner decisions.
 
 | | ID | Issue | Title | Lane | Pri | Pts (est) | Status | Claimed-by | Depends on |
 |---|---|---|---|---|---|---|---|---|---|
@@ -69,10 +69,10 @@ Status: Proposed (issue exists with acceptance criteria, not yet startable) | No
 | - | STAR-7 | [#8](https://github.com/dmbierman1210/BamTechExercise/issues/8) | [RULES] Duty rules core: one current duty, end-date chaining, RETIRED, career start/end dates | API | P1 | 5 | Proposed | - | STAR-4 |
 | - | STAR-8 | [#9](https://github.com/dmbierman1210/BamTechExercise/issues/9) | [RULES] Corrections: backdated duty, return from retirement, required `reason`, timeline re-chaining, append-only audit entry per duty create | API | P1 | 5 | Proposed | - | STAR-7 |
 | - | STAR-9 | [#10](https://github.com/dmbierman1210/BamTechExercise/issues/10) | [API] Global error handling and one response contract (replace per-action try/catch, bare `BadHttpRequestException`) | API | P2 | 3 | Proposed | - | STAR-6, STAR-8 |
-| - | STAR-10 | [#11](https://github.com/dmbierman1210/BamTechExercise/issues/11) | [UI] Scaffold Angular app, app shell, theme, API client generated from the contract, mock API | UI | P1 | 5 | In Review | copilot-485825 | STAR-2 |
-| - | STAR-11 | [#12](https://github.com/dmbierman1210/BamTechExercise/issues/12) | [UI] People list: search, status badges (non-astronaut / active / retired) | UI | P1 | 5 | In Review | copilot-485825 | STAR-10 |
-| - | STAR-12 | [#13](https://github.com/dmbierman1210/BamTechExercise/issues/13) | [UI] Person detail with astronaut duty timeline | UI | P1 | 5 | In Review | copilot-485825 | STAR-11 |
-| - | STAR-13 | [#14](https://github.com/dmbierman1210/BamTechExercise/issues/14) | [UI] Add duty form (reason required when backdating or after retirement); add and rename person | UI | P1 | 5 | In Review | copilot-485825 | STAR-12 |
+| - | STAR-10 | [#11](https://github.com/dmbierman1210/BamTechExercise/issues/11) | [UI] Scaffold Angular app, app shell, theme, API client generated from the contract, mock API | UI | P1 | 5 | Done | copilot-485825 | STAR-2 |
+| - | STAR-11 | [#12](https://github.com/dmbierman1210/BamTechExercise/issues/12) | [UI] People list: search, status badges (non-astronaut / active / retired) | UI | P1 | 5 | Done | copilot-485825 | STAR-10 |
+| - | STAR-12 | [#13](https://github.com/dmbierman1210/BamTechExercise/issues/13) | [UI] Person detail with astronaut duty timeline | UI | P1 | 5 | Done | copilot-485825 | STAR-11 |
+| - | STAR-13 | [#14](https://github.com/dmbierman1210/BamTechExercise/issues/14) | [UI] Add duty form (reason required when backdating, future-dated or after retirement); add and rename person | UI | P1 | 5 | In Review | copilot-485825 | STAR-12 |
 | - | STAR-14 | [#15](https://github.com/dmbierman1210/BamTechExercise/issues/15) | [UI] Production polish: loading/empty/error states, accessibility, responsive layout, UI unit tests | UI | P2 | 5 | In Review | copilot-485825 | STAR-13 |
 | - | STAR-15 | [#16](https://github.com/dmbierman1210/BamTechExercise/issues/16) | [LOG] Process logging of successes and exceptions stored in the database | HARD | P2 | 5 | Proposed | - | STAR-9 merged |
 | - | STAR-16 | [#17](https://github.com/dmbierman1210/BamTechExercise/issues/17) | [TEST] Coverage report and >50% gate on the most impactful handlers | HARD | P2 | 3 | Proposed | - | STAR-9 merged |
@@ -92,11 +92,13 @@ A marathon is one unattended agent working a lane's stories in order inside conf
 |---|---|---|---|---|
 | W0 | STAR-1, STAR-2 | repo root, `docs/` | Normal single session, first. Human reviews the contract. | - |
 | API | STAR-3 to STAR-9 | `api/**`, `tests/**` | Marathon 1, parallel with UI | `BamTechExercise-api` |
-| UI | STAR-10 to STAR-14 | `ui/**` only | Marathon 2, parallel with API (builds on the mock) | `BamTechExercise-ui` |
+| UI | STAR-10 to STAR-14 | `ui/**` only | Marathon 2, parallel with API (builds on the mock). Run 2026-11-11 (copilot-485825, limits 5 stories / 7.5 h): all five built, PRs #24-#30 merged by the owner 2026-11-12. | `BamTechExercise-ui` |
 | HARD | STAR-15 to STAR-17 | `api/**`, `tests/**`, `.github/**` | Marathon 3, only after Marathon 1's PRs are merged | `BamTechExercise-harden` |
 | W3 | STAR-18, STAR-19 | `ui/**`, `api/**` (CORS), `README.md` | Normal sessions, after API and UI merged | - |
 
 Running the API and UI marathons together is approved (D7): the ledger allows one live run per project label, and the two labels above are distinct only because the lanes share no files. Release branches: `release/marathon-api`, `release/marathon-ui`, `release/marathon-harden`; each ends in a draft PR to `main` that a person merges. Suggested limits per marathon (human confirms at start): API 6 stories / 6 hours; UI 5 stories / 6 hours; HARD 3 stories / 4 hours.
+
+**Stacked PRs: merge order matters (lesson from the UI run).** Marathon story PRs are stacked: each targets the previous story branch, and only the bottom one targets the release branch. Merging them bottom-up leaves PR #2..#n merged into branches that are never merged onward, so the release PR carries only the first story. The UI run needed an extra recovery PR (#30) for this. Merge top-down (last story PR first, so each folds into its parent and the release PR carries all), or retarget each PR to the release branch after merging the one below it; then check that the release PR diff contains every story before merging it.
 
 Marathon preflight on this project: use `-Tools git,gh` (no `az`), and pass `-TestCommand "dotnet test"` once `tests/` exists. Before any run the active `gh` account must be `dmbierman1210` (or the agent must set `GH_TOKEN` for that account in its own terminal).
 

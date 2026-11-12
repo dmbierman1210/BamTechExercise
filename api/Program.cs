@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using StargateAPI.Business.Auditing;
 using StargateAPI.Business.Data;
+using StargateAPI.Business.Logging;
 using StargateAPI.Controllers;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -23,7 +24,13 @@ builder.Services.AddDbContext<StargateContext>(options =>
 builder.Services.AddMediatR(cfg =>
 {
     cfg.RegisterServicesFromAssemblies(typeof(Program).Assembly);
+    cfg.AddOpenBehavior(typeof(LoggingBehavior<,>));
 });
+
+// Process logs go to the LogEntry table through a queue and a background writer, never inline in a request.
+builder.Services.AddSingleton<DatabaseLogQueue>();
+builder.Services.AddSingleton<ILoggerProvider, DatabaseLoggerProvider>();
+builder.Services.AddHostedService<DatabaseLogWriter>();
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IActorProvider, HeaderActorProvider>();
@@ -35,6 +42,9 @@ builder.Services.AddProblemDetails();
 // The exception middleware logs every exception at Error, including the expected 400/404/409 ones, before the
 // handler runs. The handler logs real failures itself (with the trace id), so the framework's entry is dropped.
 builder.Logging.AddFilter("Microsoft.AspNetCore.Diagnostics.ExceptionHandlerMiddleware", LogLevel.Critical);
+
+// EF logs every SQL command; storing those would recurse into the table and drown the useful entries.
+builder.Logging.AddFilter<DatabaseLoggerProvider>("Microsoft.EntityFrameworkCore", LogLevel.None);
 
 var app = builder.Build();
 

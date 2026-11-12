@@ -27,8 +27,8 @@ namespace StargateAPI.Controllers
             else
             {
                 var traceId = Activity.Current?.Id ?? httpContext.TraceIdentifier;
-                _logger.LogError(exception, "Unhandled exception (trace id {TraceId})", traceId);
                 body = ErrorResponses.Unexpected(traceId);
+                _logger.LogError(exception, "Unhandled exception (trace id {TraceId}, status {StatusCode})", traceId, body.ResponseCode);
             }
 
             httpContext.Response.StatusCode = body.ResponseCode;

@@ -82,7 +82,7 @@ Status: Proposed (issue exists with acceptance criteria, not yet startable) | No
 | - | STAR-16 | [#17](https://github.com/dmbierman1210/BamTechExercise/issues/17) | [TEST] Coverage report and >50% gate on the most impactful handlers | HARD | P2 | 3 | In Review (PR #41) | copilot-790541 | STAR-9 merged |
 | - | STAR-17 | [#18](https://github.com/dmbierman1210/BamTechExercise/issues/18) | [CI] GitHub Actions: build, test, coverage on every PR | HARD | P3 | 2 | In Review (PR #42; CI not yet run, billing) | copilot-790541 | STAR-16 |
 | - | STAR-18 | [#19](https://github.com/dmbierman1210/BamTechExercise/issues/19) | [INTEG] Wire UI to the live API: CORS, remove mock, end-to-end run-and-look | W3 | P1 | 5 | In Review (PR #46, contract PR #45) | copilot-647872 | STAR-9, STAR-14 merged |
-| - | STAR-19 | [#20](https://github.com/dmbierman1210/BamTechExercise/issues/20) | [DOC] README: run/test steps, design decisions, interview talking points | W3 | P3 | 1 | In Progress | copilot-647872 | STAR-18 |
+| - | STAR-19 | [#20](https://github.com/dmbierman1210/BamTechExercise/issues/20) | [DOC] README: run/test steps, design decisions, interview talking points | W3 | P3 | 1 | In Review (PR #48) | copilot-647872 | STAR-18 |
 | - | STAR-20 | [#21](https://github.com/dmbierman1210/BamTechExercise/issues/21) | [RULES] Correct or void a duty entry with a reason and audit trail (stretch goal) | - | P3 | 8 | Proposed | - | STAR-8, STAR-18 and STAR-19 merged |
 | - | STAR-21 | [#22](https://github.com/dmbierman1210/BamTechExercise/issues/22) | [AUTH] Login: replace the self-declared actor with an authenticated identity (stretch goal; needs owner decisions on accounts, sessions, roles) | - | P3 | 8 | Proposed | - | STAR-20 |
 

@@ -1,10 +1,8 @@
-using Dapper;
 using MediatR;
 using MediatR.Pipeline;
 using Microsoft.EntityFrameworkCore;
 using StargateAPI.Business.Data;
 using StargateAPI.Controllers;
-using System.Net;
 
 namespace StargateAPI.Business.Commands
 {
@@ -53,15 +51,14 @@ namespace StargateAPI.Business.Commands
         }
         public async Task<CreateAstronautDutyResult> Handle(CreateAstronautDuty request, CancellationToken cancellationToken)
         {
-
-            var query = $"SELECT * FROM [Person] WHERE \'{request.Name}\' = Name";
-
-            var person = await _context.Connection.QueryFirstOrDefaultAsync<Person>(query)
+            var person = await _context.People
+                .FirstOrDefaultAsync(p => p.Name == request.Name, cancellationToken)
                 ?? throw new BadHttpRequestException("Bad Request");
 
-            query = $"SELECT * FROM [AstronautDetail] WHERE {person.Id} = PersonId";
+            var startDate = DateOnly.FromDateTime(request.DutyStartDate);
 
-            var astronautDetail = await _context.Connection.QueryFirstOrDefaultAsync<AstronautDetail>(query);
+            var astronautDetail = await _context.AstronautDetails
+                .FirstOrDefaultAsync(d => d.PersonId == person.Id, cancellationToken);
 
             if (astronautDetail == null)
             {
@@ -69,34 +66,33 @@ namespace StargateAPI.Business.Commands
                 astronautDetail.PersonId = person.Id;
                 astronautDetail.CurrentDutyTitle = request.DutyTitle;
                 astronautDetail.CurrentRank = request.Rank;
-                astronautDetail.CareerStartDate = DateOnly.FromDateTime(request.DutyStartDate);
-                if (request.DutyTitle == "RETIRED")
+                astronautDetail.CareerStartDate = startDate;
+                if (DutyTitles.IsRetired(request.DutyTitle))
                 {
-                    astronautDetail.CareerEndDate = DateOnly.FromDateTime(request.DutyStartDate);
+                    astronautDetail.CareerEndDate = startDate;
                 }
 
-                await _context.AstronautDetails.AddAsync(astronautDetail);
+                await _context.AstronautDetails.AddAsync(astronautDetail, cancellationToken);
 
             }
             else
             {
                 astronautDetail.CurrentDutyTitle = request.DutyTitle;
                 astronautDetail.CurrentRank = request.Rank;
-                if (request.DutyTitle == "RETIRED")
+                if (DutyTitles.IsRetired(request.DutyTitle))
                 {
-                    astronautDetail.CareerEndDate = DateOnly.FromDateTime(request.DutyStartDate).AddDays(-1);
+                    astronautDetail.CareerEndDate = startDate.AddDays(-1);
                 }
-                _context.AstronautDetails.Update(astronautDetail);
             }
 
-            query = $"SELECT * FROM [AstronautDuty] WHERE {person.Id} = PersonId Order By DutyStartDate Desc";
-
-            var astronautDuty = await _context.Connection.QueryFirstOrDefaultAsync<AstronautDuty>(query);
+            var astronautDuty = await _context.AstronautDuties
+                .Where(d => d.PersonId == person.Id)
+                .OrderByDescending(d => d.DutyStartDate)
+                .FirstOrDefaultAsync(cancellationToken);
 
             if (astronautDuty != null)
             {
-                astronautDuty.DutyEndDate = DateOnly.FromDateTime(request.DutyStartDate).AddDays(-1);
-                _context.AstronautDuties.Update(astronautDuty);
+                astronautDuty.DutyEndDate = startDate.AddDays(-1);
             }
 
             var newAstronautDuty = new AstronautDuty()
@@ -104,13 +100,13 @@ namespace StargateAPI.Business.Commands
                 PersonId = person.Id,
                 Rank = request.Rank,
                 DutyTitle = request.DutyTitle,
-                DutyStartDate = DateOnly.FromDateTime(request.DutyStartDate),
+                DutyStartDate = startDate,
                 DutyEndDate = null
             };
 
-            await _context.AstronautDuties.AddAsync(newAstronautDuty);
+            await _context.AstronautDuties.AddAsync(newAstronautDuty, cancellationToken);
 
-            await _context.SaveChangesAsync();
+            await _context.SaveChangesAsync(cancellationToken);
 
             return new CreateAstronautDutyResult()
             {

@@ -1,5 +1,5 @@
-﻿using Dapper;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 using StargateAPI.Business.Data;
 using StargateAPI.Business.Dtos;
 using StargateAPI.Controllers;
@@ -25,9 +25,11 @@ namespace StargateAPI.Business.Queries
 
             var result = new GetAstronautDutiesByNameResult();
 
-            var query = $"SELECT a.Id as PersonId, a.Name, b.CurrentRank, b.CurrentDutyTitle, b.CareerStartDate, b.CareerEndDate FROM [Person] a LEFT JOIN [AstronautDetail] b on b.PersonId = a.Id WHERE \'{request.Name}\' = a.Name";
-
-            var person = await _context.Connection.QueryFirstOrDefaultAsync<PersonAstronaut>(query);
+            var person = await _context.People
+                .AsNoTracking()
+                .Where(p => p.Name == request.Name)
+                .Select(PersonAstronaut.Projection)
+                .FirstOrDefaultAsync(cancellationToken);
 
             result.Person = person;
 
@@ -39,11 +41,11 @@ namespace StargateAPI.Business.Queries
                 return result;
             }
 
-            query = $"SELECT * FROM [AstronautDuty] WHERE {person.PersonId} = PersonId Order By DutyStartDate Desc";
-
-            var duties = await _context.Connection.QueryAsync<AstronautDuty>(query);
-
-            result.AstronautDuties = duties.ToList();
+            result.AstronautDuties = await _context.AstronautDuties
+                .AsNoTracking()
+                .Where(d => d.PersonId == person.PersonId)
+                .OrderByDescending(d => d.DutyStartDate)
+                .ToListAsync(cancellationToken);
 
             return result;
 

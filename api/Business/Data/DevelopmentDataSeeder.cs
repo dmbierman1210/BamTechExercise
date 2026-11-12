@@ -30,12 +30,12 @@ namespace StargateAPI.Business.Data
             [
                 new("CPT", "Pilot", new DateOnly(2003, 5, 19)),
                 new("MAJ", "Commander", new DateOnly(2009, 1, 12)),
-                new("MAJ", "RETIRED", new DateOnly(2015, 7, 1)),
+                new("MAJ", DutyTitles.RetiredDutyTitle, new DateOnly(2015, 7, 1)),
             ]),
             new("Priya Raman",
             [
                 new("CPT", "Mission Specialist", new DateOnly(2005, 3, 1)),
-                new("MAJ", "RETIRED", new DateOnly(2011, 6, 15)),
+                new("MAJ", DutyTitles.RetiredDutyTitle, new DateOnly(2011, 6, 15)),
                 new("LTC", "Flight Engineer", new DateOnly(2016, 2, 1)),
             ]),
         ];
@@ -85,7 +85,7 @@ namespace StargateAPI.Business.Data
                 CurrentRank = latest.Rank,
                 CurrentDutyTitle = latest.DutyTitle,
                 CareerStartDate = first.Start,
-                CareerEndDate = string.Equals(latest.DutyTitle, "RETIRED", StringComparison.OrdinalIgnoreCase)
+                CareerEndDate = DutyTitles.IsRetired(latest.DutyTitle)
                     ? latest.Start.AddDays(-1)
                     : null,
             };

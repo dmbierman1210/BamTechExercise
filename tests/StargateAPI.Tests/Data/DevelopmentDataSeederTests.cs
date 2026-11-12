@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using StargateAPI.Business;
 using StargateAPI.Business.Data;
 
 namespace StargateAPI.Tests.Data;
@@ -46,9 +47,9 @@ public class DevelopmentDataSeederTests
             .ToListAsync();
 
         Assert.Contains(people, p => p.AstronautDetail is null && p.AstronautDuties.Count == 0);
-        Assert.Contains(people, p => p.AstronautDetail is { CareerEndDate: null, CurrentDutyTitle: not "RETIRED" });
-        Assert.Contains(people, p => p.AstronautDetail is { CareerEndDate: not null, CurrentDutyTitle: "RETIRED" });
-        Assert.Contains(people, p => p.AstronautDuties.Any(d => d.DutyTitle == "RETIRED") && p.AstronautDetail!.CurrentDutyTitle != "RETIRED");
+        Assert.Contains(people, p => p.AstronautDetail is { CareerEndDate: null, CurrentDutyTitle: not DutyTitles.RetiredDutyTitle });
+        Assert.Contains(people, p => p.AstronautDetail is { CareerEndDate: not null, CurrentDutyTitle: DutyTitles.RetiredDutyTitle });
+        Assert.Contains(people, p => p.AstronautDuties.Any(d => DutyTitles.IsRetired(d.DutyTitle)) && p.AstronautDetail!.CurrentDutyTitle != DutyTitles.RetiredDutyTitle);
 
         foreach (var person in people.Where(p => p.AstronautDuties.Count > 0))
         {

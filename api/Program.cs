@@ -4,8 +4,6 @@ using StargateAPI.Business.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
-Dapper.SqlMapper.AddTypeHandler(new DapperDateOnlyHandler());
-
 // Add services to the container.
 
 builder.Services.AddControllers();

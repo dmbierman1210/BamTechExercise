@@ -39,6 +39,15 @@ builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 
+// The browser UI is a different origin (http://localhost:4200). CORS is a local-development convenience only:
+// one configured origin, no wildcard, and only the methods and headers the UI actually sends.
+const string UiCorsPolicy = "Ui";
+var uiOrigin = builder.Configuration["Cors:AllowedOrigin"] ?? "http://localhost:4200";
+builder.Services.AddCors(options => options.AddPolicy(UiCorsPolicy, policy => policy
+    .WithOrigins(uiOrigin)
+    .WithMethods("GET", "POST", "PUT")
+    .WithHeaders("Content-Type", "X-Actor")));
+
 // The exception middleware logs every exception at Error, including the expected 400/404/409 ones, before the
 // handler runs. The handler logs real failures itself (with the trace id), so the framework's entry is dropped.
 builder.Logging.AddFilter("Microsoft.AspNetCore.Diagnostics.ExceptionHandlerMiddleware", LogLevel.Critical);
@@ -78,9 +87,14 @@ if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
-}
 
-app.UseHttpsRedirection();
+    app.UseCors(UiCorsPolicy);
+}
+else
+{
+    // Skipped in Development: it would turn a CORS preflight sent to http://localhost:5204 into a 307, which browsers reject.
+    app.UseHttpsRedirection();
+}
 
 app.UseAuthorization();
 

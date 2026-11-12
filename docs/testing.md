@@ -37,3 +37,16 @@ the current number so that it catches a regression without blocking small, well-
 | `Api/ContractTests` against `docs/api/openapi.yaml` | The contract is what the UI is built against; this fails if Swagger's routes and status codes drift from it. | `Api/ContractTests` |
 | Query handlers (`GetPeople`, `GetPersonByName`, `GetAstronautDutiesByName`) | Status derivation (non-astronaut, active, retired), ordering, and 404 for an unknown person. | `Queries/QueryHandlerTests` |
 | `DevelopmentDataSeeder`, migrations | A fresh database must come up with the schema, constraints and sample data the app expects. | `Data/DatabaseTests`, `Data/DevelopmentDataSeederTests` |
+
+## Continuous integration
+
+`.github/workflows/ci.yml` runs on every pull request and on pushes to `main`, with read-only permissions:
+
+- **API build, test, coverage** (`api` job): restore, build in Release with warnings as errors, `dotnet test` (which fails below
+  the 50% line-coverage floor), then the HTML coverage report is uploaded as the `coverage-report` artifact.
+- **UI lint, test, build** (`ui` job): runs only when `ui/package.json` exists: `npm ci`, `npm run lint`, `npm test`,
+  `npm run build`.
+
+Repository owner, to make the checks count: Settings -> Branches -> branch protection rule for `main` -> "Require status
+checks to pass before merging" and select **`API build, test, coverage`** and **`UI lint, test, build`**. (Agents do not
+change repository settings.)

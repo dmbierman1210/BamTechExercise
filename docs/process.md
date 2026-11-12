@@ -77,6 +77,7 @@ stateDiagram-v2
 | **Run-and-look for anything client-visible** | Unit tests passing is not proof a UI works. The worker launches it and records what it saw. |
 | **Fresh-context review** | A reviewer that did not write the code does not share its blind spots. |
 | **Close out every box in the same session** | "PR merged" is not "story done": worktree, branch, notes, exec summary, issue, tracker row. |
+| **Run every test locally and comment the results on the story (D13)** | GitHub Actions minutes are used up, so CI cannot be evidence. Agents run the build and tests on their own machine and post the exact commands and results on the issue and in the PR. "Green" is never claimed for something that was not run. |
 
 ## 4. Why a contract comes first
 

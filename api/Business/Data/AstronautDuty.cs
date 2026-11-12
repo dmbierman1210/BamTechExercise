@@ -19,6 +19,8 @@ namespace StargateAPI.Business.Data
 
         public DateOnly? DutyEndDate { get; set; }
 
+        public string? Reason { get; set; }
+
         public virtual Person Person { get; set; } = null!;
     }
 
@@ -30,6 +32,7 @@ namespace StargateAPI.Business.Data
             builder.Property(x => x.Id).ValueGeneratedOnAdd();
             builder.Property(x => x.Rank).IsRequired().HasMaxLength(100);
             builder.Property(x => x.DutyTitle).IsRequired().HasMaxLength(100);
+            builder.Property(x => x.Reason).HasMaxLength(500);
             builder.HasIndex(x => new { x.PersonId, x.DutyStartDate }).IsUnique();
         }
     }

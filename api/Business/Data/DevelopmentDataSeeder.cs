@@ -8,7 +8,7 @@ namespace StargateAPI.Business.Data
     /// </summary>
     public static class DevelopmentDataSeeder
     {
-        private sealed record SeedDuty(string Rank, string DutyTitle, DateOnly Start);
+        private sealed record SeedDuty(string Rank, string DutyTitle, DateOnly Start, string? Reason = null);
 
         private sealed record SeedPerson(string Name, SeedDuty[] Duties);
 
@@ -36,7 +36,7 @@ namespace StargateAPI.Business.Data
             [
                 new("CPT", "Mission Specialist", new DateOnly(2005, 3, 1)),
                 new("MAJ", DutyTitles.RetiredDutyTitle, new DateOnly(2011, 6, 15)),
-                new("LTC", "Flight Engineer", new DateOnly(2016, 2, 1)),
+                new("LTC", "Flight Engineer", new DateOnly(2016, 2, 1), "Returned to flight status after medical clearance."),
             ]),
         ];
 
@@ -74,6 +74,7 @@ namespace StargateAPI.Business.Data
                     DutyTitle = duty.DutyTitle,
                     DutyStartDate = duty.Start,
                     DutyEndDate = next?.Start.AddDays(-1),
+                    Reason = duty.Reason,
                 });
             }
 

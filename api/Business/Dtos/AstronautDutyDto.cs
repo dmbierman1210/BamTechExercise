@@ -17,7 +17,6 @@ namespace StargateAPI.Business.Dtos
 
         public DateOnly? DutyEndDate { get; set; }
 
-        // Part of the contract; there is no stored reason until the corrections story adds the column.
         public string? Reason { get; set; }
 
         public static readonly Expression<Func<AstronautDuty, AstronautDutyDto>> Projection = duty => new AstronautDutyDto
@@ -28,6 +27,7 @@ namespace StargateAPI.Business.Dtos
             DutyTitle = duty.DutyTitle,
             DutyStartDate = duty.DutyStartDate,
             DutyEndDate = duty.DutyEndDate,
+            Reason = duty.Reason,
         };
     }
 }

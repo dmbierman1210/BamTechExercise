@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Net;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -22,25 +23,31 @@ namespace StargateAPI.Business.Commands
         public string? DutyTitle { get; set; }
 
         public string? DutyStartDate { get; set; }
+
+        public string? Reason { get; set; }
     }
 
     /// <summary>
     /// Adds a duty to a person's timeline. All rules run on the person's whole timeline inside one transaction,
-    /// so a rejected or failed call changes nothing.
+    /// so a rejected or failed call changes nothing. The timeline is always re-chained afterwards: every duty
+    /// ends the day before the next one starts and only the latest has no end date.
     /// </summary>
     public class CreateAstronautDutyHandler : IRequestHandler<CreateAstronautDuty, CreateAstronautDutyResult>
     {
         public const int MaxRankLength = 100;
         public const int MaxDutyTitleLength = 100;
+        public const int MaxReasonLength = 500;
         private const string DateFormat = "yyyy-MM-dd";
 
         private readonly StargateContext _context;
         private readonly IActorProvider _actorProvider;
+        private readonly TimeProvider _time;
 
-        public CreateAstronautDutyHandler(StargateContext context, IActorProvider actorProvider)
+        public CreateAstronautDutyHandler(StargateContext context, IActorProvider actorProvider, TimeProvider time)
         {
             _context = context;
             _actorProvider = actorProvider;
+            _time = time;
         }
 
         public async Task<CreateAstronautDutyResult> Handle(CreateAstronautDuty request, CancellationToken cancellationToken)
@@ -50,6 +57,7 @@ namespace StargateAPI.Business.Commands
             var rank = ValidateText(request.Rank, "rank", "rank", MaxRankLength, errors);
             var dutyTitle = ValidateText(request.DutyTitle, "dutyTitle", "duty title", MaxDutyTitleLength, errors);
             var startDate = ParseDate(request.DutyStartDate, errors);
+            var reason = ValidateReason(request.Reason, errors);
             var actor = ActorRules.Require(_actorProvider, errors);
 
             if (errors.Count > 0 || name is null || rank is null || dutyTitle is null || startDate is null || actor is null)
@@ -73,19 +81,16 @@ namespace StargateAPI.Business.Commands
                     .OrderBy(d => d.DutyStartDate)
                     .ToListAsync(cancellationToken);
 
-                var rejection = Check(timeline, startDate.Value);
-                if (rejection is not null)
+                if (timeline.Any(d => d.DutyStartDate == startDate.Value))
                 {
-                    return rejection;
+                    return Conflict("The person already has a duty starting on this date.");
                 }
 
-                // The previous open duty ends the day before the new one starts. Saved first so that a person
-                // never has two open duties, even for a moment.
-                var previous = timeline.LastOrDefault();
-                if (previous is not null)
+                var today = DateOnly.FromDateTime(_time.GetUtcNow().UtcDateTime);
+                var missingReason = reason is null ? ReasonRequiredMessage(timeline, startDate.Value, today) : null;
+                if (missingReason is not null)
                 {
-                    previous.DutyEndDate = startDate.Value.AddDays(-1);
-                    await _context.SaveChangesAsync(cancellationToken);
+                    return ResponseFactory.Invalid<CreateAstronautDutyResult>(new List<FieldError> { new("reason", missingReason) });
                 }
 
                 var newDuty = new AstronautDuty
@@ -94,9 +99,12 @@ namespace StargateAPI.Business.Commands
                     Rank = rank,
                     DutyTitle = dutyTitle,
                     DutyStartDate = startDate.Value,
-                    DutyEndDate = null,
+                    Reason = reason,
                 };
                 _context.AstronautDuties.Add(newDuty);
+
+                var ordered = timeline.Append(newDuty).OrderBy(d => d.DutyStartDate).ToList();
+                var rechained = Rechain(ordered, newDuty);
 
                 var detail = await _context.AstronautDetails.FirstOrDefaultAsync(d => d.PersonId == person.Id, cancellationToken);
                 if (detail is null)
@@ -105,12 +113,42 @@ namespace StargateAPI.Business.Commands
                     _context.AstronautDetails.Add(detail);
                 }
 
-                detail.CurrentRank = rank;
-                detail.CurrentDutyTitle = dutyTitle;
-                detail.CareerStartDate = timeline.Count > 0 ? timeline[0].DutyStartDate : startDate.Value;
-                detail.CareerEndDate = DutyTitles.IsRetired(dutyTitle) ? startDate.Value.AddDays(-1) : null;
+                var latest = ordered[^1];
+                detail.CurrentRank = latest.Rank;
+                detail.CurrentDutyTitle = latest.DutyTitle;
+                detail.CareerStartDate = ordered[0].DutyStartDate;
+                detail.CareerEndDate = DutyTitles.IsRetired(latest.DutyTitle) ? latest.DutyStartDate.AddDays(-1) : null;
 
                 await _context.SaveChangesAsync(cancellationToken);
+
+                _context.AuditEntries.Add(new AuditEntry
+                {
+                    EntityType = AuditEntityType.Duty,
+                    EntityId = newDuty.Id,
+                    Action = AuditActions.Created,
+                    Actor = actor,
+                    Reason = reason,
+                    TimestampUtc = _time.GetUtcNow().UtcDateTime,
+                    BeforeJson = rechained.Count == 0
+                        ? null
+                        : JsonSerializer.Serialize(new { rechained = rechained.Select(r => new { dutyId = r.Duty.Id, dutyEndDate = r.Before }) }),
+                    AfterJson = JsonSerializer.Serialize(new
+                    {
+                        duty = new
+                        {
+                            id = newDuty.Id,
+                            personId = newDuty.PersonId,
+                            rank = newDuty.Rank,
+                            dutyTitle = newDuty.DutyTitle,
+                            dutyStartDate = newDuty.DutyStartDate,
+                            dutyEndDate = newDuty.DutyEndDate,
+                            reason = newDuty.Reason,
+                        },
+                        rechained = rechained.Select(r => new { dutyId = r.Duty.Id, dutyEndDate = r.Duty.DutyEndDate }),
+                    }),
+                });
+                await _context.SaveChangesAsync(cancellationToken);
+
                 await transaction.CommitAsync(cancellationToken);
 
                 return new CreateAstronautDutyResult
@@ -126,27 +164,49 @@ namespace StargateAPI.Business.Commands
             }
         }
 
-        /// <summary>The rules for the normal, forward-in-time case. Backdating and returning from retirement are not allowed yet.</summary>
-        private static CreateAstronautDutyResult? Check(List<AstronautDuty> timeline, DateOnly startDate)
+        /// <summary>
+        /// Sets every duty's end date to the day before the next one starts (null for the latest) and returns
+        /// the existing duties whose end date changed, with the value they had before.
+        /// </summary>
+        private static List<(AstronautDuty Duty, DateOnly? Before)> Rechain(List<AstronautDuty> ordered, AstronautDuty newDuty)
         {
-            if (timeline.Count == 0)
+            var changed = new List<(AstronautDuty, DateOnly?)>();
+
+            for (var i = 0; i < ordered.Count; i++)
             {
-                return null;
+                var duty = ordered[i];
+                DateOnly? end = i + 1 < ordered.Count ? ordered[i + 1].DutyStartDate.AddDays(-1) : null;
+
+                if (duty.DutyEndDate != end)
+                {
+                    if (!ReferenceEquals(duty, newDuty))
+                    {
+                        changed.Add((duty, duty.DutyEndDate));
+                    }
+
+                    duty.DutyEndDate = end;
+                }
             }
 
-            if (timeline.Any(d => d.DutyStartDate == startDate))
+            return changed;
+        }
+
+        /// <summary>The message for the missing reason when the new duty needs one, otherwise null.</summary>
+        private static string? ReasonRequiredMessage(List<AstronautDuty> timeline, DateOnly startDate, DateOnly today)
+        {
+            if (timeline.Count > 0 && startDate < timeline[^1].DutyStartDate)
             {
-                return Conflict("The person already has a duty starting on this date.");
+                return "A reason is required when the duty starts before the person's latest duty.";
             }
 
-            if (DutyTitles.IsRetired(timeline[^1].DutyTitle))
+            if (timeline.Count > 0 && DutyTitles.IsRetired(timeline[^1].DutyTitle))
             {
-                return Conflict("The person has retired; adding a duty after retirement is not supported yet.");
+                return "A reason is required to add a duty after the person has retired.";
             }
 
-            if (startDate < timeline[^1].DutyStartDate)
+            if (startDate > today)
             {
-                return Conflict("The duty starts before the person's latest duty; backdated duties are not supported yet.");
+                return "A reason is required when the duty starts in the future.";
             }
 
             return null;
@@ -172,6 +232,25 @@ namespace StargateAPI.Business.Commands
             if (value.Length > maxLength)
             {
                 errors.Add(new FieldError(field, $"The {label} must be at most {maxLength} characters."));
+                return null;
+            }
+
+            return value;
+        }
+
+        /// <summary>Trimmed; blank becomes null. A reason that is not needed is still stored.</summary>
+        private static string? ValidateReason(string? raw, List<FieldError> errors)
+        {
+            var value = raw?.Trim();
+
+            if (string.IsNullOrEmpty(value))
+            {
+                return null;
+            }
+
+            if (value.Length > MaxReasonLength)
+            {
+                errors.Add(new FieldError("reason", $"The reason must be at most {MaxReasonLength} characters."));
                 return null;
             }
 

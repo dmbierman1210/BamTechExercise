@@ -1,6 +1,6 @@
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { Component, inject } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { PersonService } from '../api/person.service';
 import { errorInterceptor } from '../api/error.interceptor';
@@ -11,10 +11,16 @@ import { ActorService } from './actor.service';
 @Component({
   selector: 'app-test-host',
   imports: [ActorRequiredDirective],
-  template: `<button type="button" appActorRequired (click)="add()">Add person</button>`,
+  template: `
+    <button type="button" appActorRequired="hint" [actorBusy]="busy()" (click)="add()">
+      Add person
+    </button>
+    <p id="hint">The hint</p>
+  `,
 })
 class TestHost {
   private readonly people = inject(PersonService);
+  readonly busy = signal(false);
   add(): void {
     this.people.createPerson({ name: 'Ann Lee' }).subscribe();
   }
@@ -44,18 +50,22 @@ describe('ActorRequiredDirective (writes are blocked until a name is set)', () =
 
   afterEach(() => controller.verify());
 
-  it('disables the control and shows the hint while no name is set', () => {
-    expect(button.disabled).toBe(true);
+  it('blocks the control with aria-disabled (still focusable) and points to the hint while no name is set', () => {
+    expect(button.disabled).toBe(false);
     expect(button.getAttribute('aria-disabled')).toBe('true');
+    expect(button.getAttribute('aria-describedby')).toBe('hint');
     expect(button.title).toBe(actors.hint);
+    button.focus();
+    expect(document.activeElement).toBe(button);
     button.click();
     controller.expectNone((request) => request.method === 'POST');
   });
 
-  it('enables the control once a name is set and the write carries X-Actor', async () => {
+  it('unblocks the control once a name is set and the write carries X-Actor', async () => {
     actors.setActor('Ada Lovelace');
     await fixture.whenStable();
-    expect(button.disabled).toBe(false);
+    expect(button.getAttribute('aria-disabled')).toBeNull();
+    expect(button.getAttribute('aria-describedby')).toBeNull();
     expect(button.hasAttribute('title')).toBe(false);
 
     button.click();
@@ -70,6 +80,18 @@ describe('ActorRequiredDirective (writes are blocked until a name is set)', () =
     await fixture.whenStable();
     actors.clearActor();
     await fixture.whenStable();
-    expect(button.disabled).toBe(true);
+    expect(button.getAttribute('aria-disabled')).toBe('true');
+    button.click();
+    controller.expectNone((request) => request.method === 'POST');
+  });
+
+  it('blocks the control while busy even with a name set, without a hint', async () => {
+    actors.setActor('Ada');
+    fixture.componentInstance.busy.set(true);
+    await fixture.whenStable();
+    expect(button.getAttribute('aria-disabled')).toBe('true');
+    expect(button.getAttribute('aria-describedby')).toBeNull();
+    button.click();
+    controller.expectNone((request) => request.method === 'POST');
   });
 });

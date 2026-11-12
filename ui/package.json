@@ -12,7 +12,11 @@
     "test": "npm run test:ui && npm run test:mock",
     "test:ui": "ng test --watch=false",
     "test:mock": "node --test \"mock-server/*.test.mjs\"",
-    "lint": "ng lint"
+    "lint": "ng lint",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "a11y:browser": "node scripts/a11y-browser.mjs",
+    "walkthrough": "node scripts/keyboard-walkthrough.mjs"
   },
   "private": true,
   "packageManager": "npm@10.9.3",
@@ -36,6 +40,7 @@
     "@angular/compiler-cli": "^21.2.0",
     "@eslint/js": "^10.0.1",
     "angular-eslint": "21.4.0",
+    "axe-core": "^4.14.0",
     "concurrently": "^10.0.7",
     "eslint": "^10.3.0",
     "jsdom": "^28.1.0",

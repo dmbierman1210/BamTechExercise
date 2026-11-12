@@ -1,0 +1,120 @@
+:host {
+  display: block;
+}
+
+.page-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--acts-space-2) var(--acts-space-4);
+
+  h1 {
+    margin: 0 0 var(--acts-space-4);
+  }
+}
+
+.header-hint {
+  margin: calc(var(--acts-space-2) * -1) 0 var(--acts-space-4);
+}
+
+.controls {
+  --mat-form-field-filled-container-color: var(--acts-surface-raised);
+  --mat-form-field-filled-hover-container-color: var(--acts-surface-raised);
+  --mat-form-field-filled-focus-container-color: var(--acts-surface-raised);
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr;
+  gap: var(--acts-space-3);
+  margin-bottom: var(--acts-space-2);
+}
+
+.count {
+  margin: 0 0 var(--acts-space-3);
+  font-size: 0.875rem;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
+  gap: var(--acts-space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.card {
+  position: relative;
+  display: grid;
+  gap: var(--acts-space-3);
+  align-content: start;
+  padding: var(--acts-space-4);
+  background: var(--acts-surface);
+  border: 1px solid var(--acts-border);
+  border-radius: calc(var(--acts-radius) * 1.5);
+
+  &:hover,
+  &:focus-within {
+    border-color: var(--acts-accent);
+    background: var(--acts-surface-raised);
+  }
+
+  &:has(.card-link:focus-visible) {
+    outline: 2px solid var(--acts-accent);
+    outline-offset: 2px;
+  }
+}
+
+.name {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+.card-link {
+  color: var(--acts-text);
+  text-decoration: none;
+
+  &:focus-visible {
+    outline: none;
+  }
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+  }
+}
+
+.facts {
+  display: grid;
+  gap: var(--acts-space-1);
+  margin: 0;
+
+  div {
+    display: flex;
+    gap: var(--acts-space-2);
+  }
+
+  dt {
+    min-width: 5.5rem;
+    color: var(--acts-text-muted);
+  }
+
+  dd {
+    margin: 0;
+  }
+}
+
+.skeleton {
+  min-height: 7.5rem;
+}
+
+@media (max-width: 720px) {
+  .controls {
+    grid-template-columns: 1fr;
+  }
+
+  .cards {
+    grid-template-columns: 1fr;
+  }
+}

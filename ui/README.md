@@ -1,0 +1,105 @@
+# Stargate ACTS UI
+
+Angular app for the Astronaut Career Tracking System, built against the API contract in
+[`docs/api/openapi.yaml`](../docs/api/openapi.yaml) and a local mock API, so it does not wait for the real API.
+
+- Angular 21 (standalone components, signals, strict TypeScript, SCSS), Angular Material 21 with a custom dark
+  "mission control" theme.
+- Unit tests run on Angular's default runner (Vitest with jsdom: no browser needed). ESLint via `angular-eslint`.
+- Needs Node 22 (>= 22.12) and npm 10.
+
+## Commands
+
+Run everything from this `ui/` folder.
+
+| Command | What it does |
+| --- | --- |
+| `npm ci` | Clean install from `package-lock.json` (use `npm install` only to change dependencies). |
+| `npm start` | Mock API on <http://localhost:3000> and the app on <http://localhost:4200>, together. |
+| `npm run start:mock` | Only the mock API (`PORT`, `MOCK_EMPTY`, `MOCK_DELAY_MS`, see below). |
+| `npm run start:app` | Only the app (`ng serve`); uses `src/environments/environment.development.ts`. |
+| `npm run generate:api` | Regenerates the typed API schema from `docs/api/openapi.yaml`. |
+| `npm run lint` | ESLint (TypeScript and templates). |
+| `npm test` | One non-watch run of the app tests (`test:ui`) and the mock-server tests (`test:mock`). Exits by itself, fine for CI. |
+| `npm run build` | Production build into `dist/acts-ui` (uses `environment.ts`, the real API URL). |
+
+## Structure
+
+```
+ui/
+  mock-server/            Stateful mock API (plain Node ESM, no dependencies) and its node:test tests
+  scripts/generate-api.mjs  Contract -> src/app/api/generated/schema.ts
+  src/environments/       apiBaseUrl: development = http://localhost:3000 (mock), production = http://localhost:5204 (real API)
+  src/app/
+    api/                  Typed client layer
+      generated/          GENERATED, do not edit (header says so); committed
+      models.ts           Friendly aliases over the generated schema
+      person.service.ts   getPeople, getPersonByName, createPerson, renamePerson
+      duty.service.ts     getAstronautDutiesByName, createAstronautDuty
+      api-error.ts        ApiError (status, message, errors[]) + envelope mapping
+      error.interceptor.ts  Maps every failed call to ApiError
+    core/                 "Acting as": ActorService, interceptor, dialog, toolbar control, ActorRequiredDirective
+    pages/                People placeholder (filled by later stories) and the 404 page
+    app.*                 Shell: toolbar, nav (slide-over sidenav on phone widths), router outlet
+  src/styles.scss         Theme: Material 3 dark theme + --acts-* CSS variables (colors, spacing, typography)
+```
+
+Service methods are named after the contract's `operationId`s and return the typed response envelopes.
+The base URL comes from `API_BASE_URL` (an injection token that defaults to `environment.apiBaseUrl`); to point the
+dev build at the real API, change `environment.development.ts` to `http://localhost:5204`.
+
+## Generated API client
+
+`npm run generate:api` uses [`openapi-typescript`](https://openapi-ts.dev) offline on `docs/api/openapi.yaml` and
+writes `src/app/api/generated/schema.ts` (committed, header "GENERATED FILE - DO NOT EDIT"). Hand-written code imports
+its types through `src/app/api/models.ts`, so if the contract removes or renames a schema the build fails until the
+app is updated. After a contract change: run `npm run generate:api`, then `npm run build`, then commit the result.
+
+## Errors
+
+`errorInterceptor` turns every failed HTTP call into an `ApiError`:
+
+- API envelope (`success`, `message`, `responseCode`, optional `errors[{field, message}]`) -> `status`, `message`, `errors`.
+  Use `error.fieldMessage('reason')` to show a field error.
+- Network failure (status 0) -> message "API unreachable. ...".
+- Anything else (e.g. an HTML 502 page) -> a generic message with the status.
+
+## "Acting as" and the X-Actor header
+
+Every write (`POST`, `PUT`, `PATCH`, `DELETE`) must carry `X-Actor`, who made the change (contract: 1 to 100
+characters, trimmed). The toolbar's **Acting as** control asks for a name, stores it in `localStorage` under
+`acts.actor`, lets you change or clear it, and labels it **self-declared, not verified**.
+
+- `actorInterceptor` adds `X-Actor` to every write request while a name is set.
+- `ActorService.hasActor()` is a signal; write actions must stay disabled with a hint until it is true. Put the
+  `appActorRequired` directive on every button that changes data:
+  `<button mat-flat-button appActorRequired (click)="save()">Save</button>`. It disables the control and sets the hint
+  as its title. Do not also bind `[disabled]` on that element.
+- The toolbar control turns amber ("Set your name") while no name is set. The dialog is not opened automatically.
+
+## Mock API (`mock-server/`)
+
+Plain Node (no dependencies), stateful in memory (restart to reset). Seeded from the contract examples:
+John Doe (active, 3 duties), Jane Roe (retired, 3 duties ending in `RETIRED`, consistent with her list entry),
+Richard Roe (no duties). Next ids are person 4 and duty 7.
+
+| Setting | Effect |
+| --- | --- |
+| `PORT` | Port to listen on (default 3000). |
+| `MOCK_EMPTY=1` | Start with no people. |
+| `MOCK_DELAY_MS=400` | Delay every response (to see loading states). |
+
+PowerShell example: `$env:MOCK_EMPTY=1; npm run start:mock`.
+
+It implements all six routes with the contract's status codes, envelope and field errors: 400 for a missing or blank
+`X-Actor` on writes, invalid names (trim, 1 to 200) and malformed bodies; 404 for an unknown person on every route that
+takes a name, including `POST /AstronautDuty`; 409 for a duplicate name (case-insensitive) and for a duty with the same
+start date; the duty reason rule (400 on field `reason` when the start is after today UTC, before the latest duty start,
+or the latest duty is `RETIRED`); `RETIRED` matched case-insensitively; end dates re-chained so the timeline is
+gap-free; derived `currentRank`, `currentDutyTitle`, `astronautStatus`, `careerStartDate`, `careerEndDate`; duties
+newest first. Order of checks follows the contract: header/body validation, then 404, then 409, then history rules.
+CORS is open, including `X-Actor` and the preflight.
+
+## Screenshots
+
+`docs/screenshots/star-10-shell-desktop.png` (1280 px) and `star-10-shell-phone.png` (390 px).

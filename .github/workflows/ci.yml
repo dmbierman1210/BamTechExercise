@@ -33,15 +33,17 @@ jobs:
       - name: Restore
         run: dotnet restore StargateAPI.sln
 
+      # Warnings are errors, except NuGet vulnerability advisories (NU1901-NU1904): a newly published advisory
+      # must not turn an unrelated PR red; it stays visible as a warning.
       - name: Build (warnings are errors)
-        run: dotnet build StargateAPI.sln --configuration Release --no-restore -warnaserror
+        run: dotnet build StargateAPI.sln --configuration Release --no-restore -warnaserror "-p:WarningsNotAsErrors=NU1901%3BNU1902%3BNU1903%3BNU1904"
 
       # The test project fails the run when total line coverage is below 50%.
       - name: Test with coverage threshold
         run: dotnet test StargateAPI.sln --configuration Release --no-build
 
       - name: Coverage report
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && hashFiles('coverage/coverage.cobertura.xml') != '' }}
         run: |
           dotnet tool restore
           dotnet reportgenerator "-reports:coverage/coverage.cobertura.xml" "-targetdir:coverage/report" "-reporttypes:Html;TextSummary"

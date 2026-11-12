@@ -55,6 +55,7 @@ Last updated: 2026-11-12.
 | D11 | Contract decisions (owner, 2026-11-11), recorded in STAR-2 (#3): `POST /Person` body is an object `{ "name": "..." }`; the existing response envelope `{ success, message, responseCode }` (+ `errors[]`) is kept, HTTP status equals `responseCode`; names are trimmed, 1-200 chars, unique case-insensitively (the app checks, SQLite NOCASE only folds ASCII). |
 | D12 | Future start dates are **allowed but need a reason** (owner, 2026-11-11; supersedes an earlier "reject" answer). `dutyStartDate` later than today (UTC) without a non-blank `reason` -> 400 with a field error on `reason`. STAR-7 (#8) accepts future dates like any later date; the `Reason` column and the required-reason rule land in STAR-8 (#9). Contract in STAR-2 (#3). |
 | D13 | GitHub Actions cannot be relied on (monthly minutes used up). All tests and checks run locally and their results go on the story as a comment (protocol rule 13). STAR-17 still writes the workflow, but it is validated locally and not run. Owner, 2026-11-12. |
+| D14 | Owner decisions, 2026-11-12, all taking the PM recommendation: (1) the UI gets the API address from build-time environment config, localhost only; (2) the 500 `traceId` is documented in the contract via its own contract-change PR; (3) a case-only rename is applied and audited, an identical name is a no-op; (4) the person page does not take focus on a fresh load or direct link, only after in-app navigation. Recorded in STAR-18 (#19). |
 
 ## Status table
 
@@ -96,11 +97,13 @@ A marathon is one unattended agent working a lane's stories in order inside conf
 | API | STAR-3 to STAR-9 | `api/**`, `tests/**` | Marathon 1, parallel with UI | `BamTechExercise-api` |
 | UI | STAR-10 to STAR-14 | `ui/**` only | Marathon 2, parallel with API (builds on the mock). Run 2026-11-11 (copilot-485825, limits 5 stories / 7.5 h): all five built, PRs #24-#30 merged by the owner 2026-11-12. | `BamTechExercise-ui` |
 | HARD | STAR-15 to STAR-17 | `api/**`, `tests/**`, `.github/**` | Marathon 3, only after Marathon 1's PRs are merged | `BamTechExercise-harden` |
-| W3 | STAR-18, STAR-19 | `ui/**`, `api/**` (CORS), `README.md` | Normal sessions, after API and UI merged | - |
+| W3 | STAR-18, STAR-19 | `ui/**`, `api/**` (CORS), `README.md` | Marathon 4 (owner decision 2026-11-12): STAR-18 then STAR-19, after the API, UI and HARD lanes are merged. STAR-20 and STAR-21 are not part of it | `BamTechExercise-w3` |
 
 Running the API and UI marathons together is approved (D7): the ledger allows one live run per project label, and the two labels above are distinct only because the lanes share no files. Release branches: `release/marathon-api`, `release/marathon-ui`, `release/marathon-harden`; each ends in a draft PR to `main` that a person merges. Suggested limits per marathon (human confirms at start): API 6 stories / 6 hours; UI 5 stories / 6 hours; HARD 3 stories / 4 hours.
 
 **Stacked PRs: merge order matters (lesson from the UI run).** Marathon story PRs are stacked: each targets the previous story branch, and only the bottom one targets the release branch. Merging them bottom-up leaves PR #2..#n merged into branches that are never merged onward, so the release PR carries only the first story. The UI run needed an extra recovery PR (#30) for this. Merge top-down (last story PR first, so each folds into its parent and the release PR carries all), or retarget each PR to the release branch after merging the one below it; then check that the release PR diff contains every story before merging it.
+
+W3 marathon: release branch `release/marathon-w3`; suggested limits 2 stories / 3 hours (STAR-18 is 5 pts and spans `ui/**` and `api/**`, STAR-19 is 1 pt). Contract edits inside it go through their own PR. Merge top-down, or squash one release PR.
 
 Marathon preflight on this project: use `-Tools git,gh` (no `az`), and pass `-TestCommand "dotnet test"` once `tests/` exists. Before any run the active `gh` account must be `dmbierman1210` (or the agent must set `GH_TOKEN` for that account in its own terminal).
 

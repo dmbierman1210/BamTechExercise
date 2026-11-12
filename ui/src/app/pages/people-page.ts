@@ -6,6 +6,7 @@ import {
   effect,
   inject,
   signal,
+  untracked,
 } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
@@ -19,7 +20,10 @@ import type { PersonAstronaut } from '../api/models';
 import { PersonService } from '../api/person.service';
 import { ActorHint } from '../core/actor-hint';
 import { ActorRequiredDirective } from '../core/actor-required.directive';
+import { ConnectionStatus } from '../core/connection-status';
 import { Notifier } from '../core/notifier';
+import { StatusAnnouncer } from '../core/status-announcer';
+import { StateNotice } from '../shared/state-notice';
 import { AddPersonDialog } from './add-person-dialog';
 import {
   type ListFilters,
@@ -50,6 +54,7 @@ type LoadState =
     MatInputModule,
     RouterLink,
     StatusBadge,
+    StateNotice,
     ActorHint,
     ActorRequiredDirective,
   ],
@@ -64,6 +69,8 @@ export class PeoplePage {
   private readonly destroyRef = inject(DestroyRef);
   private readonly dialog = inject(MatDialog);
   private readonly notifier = inject(Notifier);
+  private readonly announcer = inject(StatusAnnouncer);
+  private readonly connection = inject(ConnectionStatus);
   private request?: Subscription;
 
   protected readonly statusFilters = STATUS_FILTERS;
@@ -85,10 +92,31 @@ export class PeoplePage {
     return state.kind === 'error' ? state.message : '';
   });
   protected readonly visible = computed(() => filterAndSort(this.all(), this.filters()));
+  /** What the shell's live region says: loading, then the count (errors are announced by their own alert). */
+  protected readonly statusText = computed(() => {
+    const state = this.state();
+    if (state.kind === 'loading') {
+      return 'Loading people…';
+    }
+    if (state.kind === 'error') {
+      return null;
+    }
+    if (state.people.length === 0) {
+      return 'No people yet.';
+    }
+    const shown = this.visible().length;
+    return shown === 0
+      ? 'No matches.'
+      : `Showing ${shown} of ${state.people.length} ${state.people.length === 1 ? 'person' : 'people'}.`;
+  });
+
   /** Opens the Add person dialog; on success goes to the new person (the list reloads when it is opened again). */
   protected addPerson(): void {
     this.dialog
-      .open<AddPersonDialog, undefined, string>(AddPersonDialog, { autoFocus: 'first-tabbable' })
+      .open<AddPersonDialog, undefined, string>(AddPersonDialog, {
+        autoFocus: 'first-tabbable',
+        restoreFocus: true,
+      })
       .afterClosed()
       .subscribe((name) => {
         if (name) {
@@ -100,20 +128,41 @@ export class PeoplePage {
 
   constructor() {
     effect(() => this.listState.remember(toQueryParams(this.filters())));
+    effect(() => {
+      const text = this.statusText();
+      if (text) {
+        this.announcer.announce(text);
+      }
+    });
+    let lastTick = this.connection.retryTick();
+    effect(() => {
+      const tick = this.connection.retryTick();
+      if (tick !== lastTick) {
+        lastTick = tick;
+        untracked(() => this.load(this.state().kind === 'loaded'));
+      }
+    });
     this.destroyRef.onDestroy(() => this.request?.unsubscribe());
     this.load();
   }
 
-  protected load(): void {
+  /** `refresh` keeps showing the current list (and the user's place in it) until the new data arrives. */
+  protected load(refresh = false): void {
     this.request?.unsubscribe();
-    this.state.set({ kind: 'loading' });
+    if (!refresh) {
+      this.state.set({ kind: 'loading' });
+    }
     this.request = this.people.getPeople().subscribe({
       next: (response) => this.state.set({ kind: 'loaded', people: response.people }),
-      error: (error: unknown) =>
+      error: (error: unknown) => {
+        if (refresh) {
+          return;
+        }
         this.state.set({
           kind: 'error',
           message: error instanceof ApiError ? error.message : 'Something went wrong. Try again.',
-        }),
+        });
+      },
     });
   }
 

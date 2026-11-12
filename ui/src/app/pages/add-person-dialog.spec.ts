@@ -7,6 +7,7 @@ import { RouterTestingHarness } from '@angular/router/testing';
 import { errorInterceptor } from '../api/error.interceptor';
 import { actorInterceptor } from '../core/actor.interceptor';
 import { ActorService } from '../core/actor.service';
+import { StatusAnnouncer } from '../core/status-announcer';
 import { PeoplePage } from './people-page';
 import { PersonPage } from './person-page';
 
@@ -275,6 +276,34 @@ describe('Add person (dialog on the People page)', () => {
     await settle();
     await vi.waitFor(() => expect(dialogEl()).toBeNull());
     controller.match((r) => r.url.includes('/AstronautDuty/'));
+  });
+
+  it('keeps typed text on Escape, explains how to discard it, and returns focus to the opener on Cancel', async () => {
+    await open();
+    headerButton().focus();
+    await openDialog();
+    nameInput().value = 'Ann Lee';
+    nameInput().dispatchEvent(new Event('input'));
+    await settle();
+    dialogEl()!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    await settle();
+    expect(dialogEl()).not.toBeNull();
+    expect(nameInput().value).toBe('Ann Lee');
+    expect(dialogEl()!.querySelector('.acts-discard-hint')?.textContent).toContain('Cancel');
+    expect(TestBed.inject(StatusAnnouncer).message()).toContain('unsaved changes');
+
+    dialogEl()!.querySelector<HTMLButtonElement>('button[mat-dialog-close]')!.click();
+    await vi.waitFor(() => expect(dialogEl()).toBeNull());
+    await vi.waitFor(() => expect(document.activeElement).toBe(headerButton()));
+  });
+
+  it('announces a rejected submit', async () => {
+    await open();
+    await openDialog();
+    await submitWith('   ');
+    expect(TestBed.inject(StatusAnnouncer).message()).toBe(
+      'Cannot add the person: 1 field needs attention.',
+    );
   });
 
   it('closes with Cancel without a request', async () => {

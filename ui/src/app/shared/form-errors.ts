@@ -93,6 +93,16 @@ export function applyServerError(error: unknown, options: ServerErrorOptions): s
   return leftover.length > 0 ? [...new Set(leftover)].join(' ') : null;
 }
 
+/** Shown (and announced) when Escape is pressed while a form holds unsaved text; Escape never discards it. */
+export const DISCARD_HINT =
+  'You have unsaved changes. Choose Cancel to discard them, or keep editing.';
+
+/** Live-region summary after a rejected submit; the field messages themselves are announced by their fields. */
+export function invalidSummary(action: string, controls: readonly AbstractControl[]): string {
+  const count = controls.filter((control) => control.invalid).length;
+  return `Cannot ${action}: ${count} ${count === 1 ? 'field needs' : 'fields need'} attention.`;
+}
+
 /** Moves focus to the first invalid field of a form. */
 export function focusFirstInvalid(root: HTMLElement): void {
   root

@@ -17,12 +17,15 @@ import { MatInputModule } from '@angular/material/input';
 import { PersonService } from '../api/person.service';
 import { ActorHint } from '../core/actor-hint';
 import { ActorRequiredDirective } from '../core/actor-required.directive';
+import { StatusAnnouncer } from '../core/status-announcer';
 import { FormAlert } from '../shared/form-alert';
 import {
+  DISCARD_HINT,
   NAME_MAX,
   applyServerError,
   fieldErrorText,
   focusFirstInvalid,
+  invalidSummary,
   revalidate,
   trimmedText,
 } from '../shared/form-errors';
@@ -46,7 +49,7 @@ import {
       [formGroup]="form"
       aria-label="Rename person"
       (ngSubmit)="submit()"
-      (keydown.escape)="cancel()"
+      (keydown.escape)="escape()"
     >
       <mat-form-field class="rename-field" subscriptSizing="dynamic">
         <mat-label>New name</mat-label>
@@ -57,12 +60,15 @@ import {
         }
       </mat-form-field>
       @if (unchanged()) {
-        <p class="unchanged acts-muted" role="status">
+        <p class="unchanged acts-muted">
           That is already this person's name. Type a different name to rename.
         </p>
       }
       @if (formError(); as message) {
         <app-form-alert [message]="message" (dismissed)="formError.set(null)" />
+      }
+      @if (discardHint()) {
+        <p class="acts-discard-hint">{{ discardText }}</p>
       }
       <app-actor-hint id="rename-submit-hint" />
       <div class="actions">
@@ -115,6 +121,7 @@ import {
 export class RenamePersonForm implements OnInit {
   private readonly people = inject(PersonService);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
+  private readonly announcer = inject(StatusAnnouncer);
 
   /** The person's current (canonical) name. */
   readonly currentName = input.required<string>();
@@ -133,10 +140,15 @@ export class RenamePersonForm implements OnInit {
   protected readonly unchanged = signal(false);
   protected readonly formError = signal<string | null>(null);
   protected readonly nameError = signal<string | null>(null);
+  protected readonly discardHint = signal(false);
+  protected readonly discardText = DISCARD_HINT;
 
   constructor() {
     effect(() => this.busy.emit(this.pending()));
-    this.newName.valueChanges.subscribe(() => this.unchanged.set(false));
+    this.newName.valueChanges.subscribe(() => {
+      this.unchanged.set(false);
+      this.discardHint.set(false);
+    });
     this.newName.statusChanges.subscribe(() => this.refreshError());
     afterNextRender(() => {
       const field = this.host.querySelector('input');
@@ -155,6 +167,19 @@ export class RenamePersonForm implements OnInit {
     }
   }
 
+  /** Escape closes the form only while the name is unchanged; otherwise it explains how to discard. */
+  protected escape(): void {
+    if (this.pending()) {
+      return;
+    }
+    if (this.newName.value.trim() !== this.currentName()) {
+      this.discardHint.set(true);
+      this.announcer.announce(DISCARD_HINT);
+      return;
+    }
+    this.cancelled.emit();
+  }
+
   protected submit(): void {
     if (this.pending()) {
       return;
@@ -164,6 +189,7 @@ export class RenamePersonForm implements OnInit {
     this.newName.markAsTouched();
     this.refreshError();
     if (this.form.invalid) {
+      this.announcer.announce(invalidSummary('rename', [this.newName]));
       focusFirstInvalid(this.host);
       return;
     }
@@ -171,6 +197,7 @@ export class RenamePersonForm implements OnInit {
     // Only a case-only change differs from the current name when compared exactly; both are real renames.
     if (newName === this.currentName()) {
       this.unchanged.set(true);
+      this.announcer.announce("That is already this person's name.");
       return;
     }
     this.pending.set(true);

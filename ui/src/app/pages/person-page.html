@@ -1,5 +1,5 @@
 <section
-  class="page"
+  class="page acts-page"
   aria-labelledby="person-heading"
   [attr.aria-busy]="state().kind === 'loading'"
 >
@@ -89,9 +89,9 @@
       </dl>
     } @else if (state().kind === 'loading') {
       <div class="skeleton-facts" aria-hidden="true">
-        <span class="bar"></span>
-        <span class="bar"></span>
-        <span class="bar bar-short"></span>
+        <span class="acts-skeleton-bar"></span>
+        <span class="acts-skeleton-bar"></span>
+        <span class="acts-skeleton-bar bar-short"></span>
       </div>
     }
   </header>
@@ -117,51 +117,45 @@
 
   @switch (state().kind) {
     @case ('loading') {
-      <p class="visually-hidden" role="status">Loading duties…</p>
       <ul class="skeleton-list" aria-hidden="true">
         @for (row of skeletonRows; track row) {
           <li class="skeleton-entry">
-            <span class="bar bar-name"></span>
-            <span class="bar"></span>
+            <span class="acts-skeleton-bar bar-name"></span>
+            <span class="acts-skeleton-bar"></span>
           </li>
         }
       </ul>
     }
     @case ('not-found') {
-      <div class="acts-panel notice">
-        <mat-icon class="notice-icon" aria-hidden="true">person_search</mat-icon>
-        <h2>Person not found</h2>
+      <app-state-notice illustration="not-found" heading="Person not found">
         <p class="acts-muted">No one named “{{ name() }}” is known to ACTS.</p>
         <a mat-flat-button routerLink="/people" [queryParams]="listState.queryParams()">
           <mat-icon aria-hidden="true">arrow_back</mat-icon>
           Back to People
         </a>
-      </div>
+      </app-state-notice>
     }
     @case ('error') {
-      <div class="acts-panel notice" role="alert">
-        <mat-icon class="notice-icon danger" aria-hidden="true">error</mat-icon>
-        <h2>Could not load duties</h2>
+      <app-state-notice illustration="error" heading="Could not load duties" [alert]="true">
         <p class="message">{{ errorMessage() }}</p>
         <button mat-flat-button type="button" (click)="retry()">
           <mat-icon aria-hidden="true">refresh</mat-icon>
           Retry
         </button>
-      </div>
+      </app-state-notice>
     }
     @case ('loaded') {
       @if (entries().length === 0) {
-        <div class="acts-panel notice">
-          <mat-icon class="notice-icon" aria-hidden="true">rocket</mat-icon>
-          <h2>No astronaut assignments</h2>
+        <app-state-notice illustration="duties" heading="No astronaut assignments">
           <p class="acts-muted">{{ title() }} has no duty on record yet.</p>
-        </div>
+        </app-state-notice>
       } @else {
         <h2 id="timeline-heading" class="timeline-title">Duty timeline</h2>
         <ol class="timeline" aria-labelledby="timeline-heading">
-          @for (entry of entries(); track entry.duty.id) {
+          @for (entry of entries(); track entry.duty.id; let i = $index) {
             <li
-              class="entry entry-{{ entry.kind }}"
+              class="entry acts-entry-in entry-{{ entry.kind }}"
+              [style.--i]="i < 8 ? i : 8"
               [attr.aria-current]="entry.kind === 'current' ? 'true' : null"
             >
               <span class="marker" aria-hidden="true">

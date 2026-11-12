@@ -22,8 +22,12 @@ import { DutyService } from '../api/duty.service';
 import type { AstronautDuty, PersonAstronaut } from '../api/models';
 import { ActorHint } from '../core/actor-hint';
 import { ActorRequiredDirective } from '../core/actor-required.directive';
+import { ConnectionStatus } from '../core/connection-status';
 import { Notifier } from '../core/notifier';
+import { PageTitle } from '../core/page-title';
+import { StatusAnnouncer } from '../core/status-announcer';
 import { formatCareerLength, formatDate } from '../shared/dates';
+import { StateNotice } from '../shared/state-notice';
 import { StatusBadge } from '../shared/status-badge';
 import { AddDutyForm } from './add-duty-form';
 import { PeopleListState } from './people-list-state';
@@ -46,6 +50,7 @@ type Panel = 'none' | 'rename' | 'duty';
     MatIconModule,
     RouterLink,
     StatusBadge,
+    StateNotice,
     ActorHint,
     ActorRequiredDirective,
     AddDutyForm,
@@ -60,6 +65,9 @@ export class PersonPage {
   private readonly notifier = inject(Notifier);
   private readonly injector = inject(Injector);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly announcer = inject(StatusAnnouncer);
+  private readonly pageTitle = inject(PageTitle);
+  private readonly connection = inject(ConnectionStatus);
   private request?: Subscription;
 
   protected readonly listState = inject(PeopleListState);
@@ -111,6 +119,33 @@ export class PersonPage {
         this.load(name);
         this.focusHeading();
       });
+    });
+    effect(() => {
+      const state = this.state();
+      this.pageTitle.set(state.kind === 'not-found' ? 'Person not found' : this.title());
+      switch (state.kind) {
+        case 'loading':
+          this.announcer.announce('Loading duties…');
+          break;
+        case 'not-found':
+          this.announcer.announce('Person not found.');
+          break;
+        case 'loaded': {
+          const count = state.entries.length;
+          this.announcer.announce(
+            `${state.person.name}: ${count === 0 ? 'no duties' : `${count} ${count === 1 ? 'duty' : 'duties'}`} on record.`,
+          );
+          break;
+        }
+      }
+    });
+    let lastTick = this.connection.retryTick();
+    effect(() => {
+      const tick = this.connection.retryTick();
+      if (tick !== lastTick) {
+        lastTick = tick;
+        untracked(() => this.load(this.name(), this.state().kind === 'loaded'));
+      }
     });
   }
 

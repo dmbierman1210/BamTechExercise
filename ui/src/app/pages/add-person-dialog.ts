@@ -4,15 +4,19 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
+import { filter } from 'rxjs';
 import { PersonService } from '../api/person.service';
 import { ActorHint } from '../core/actor-hint';
 import { ActorRequiredDirective } from '../core/actor-required.directive';
+import { StatusAnnouncer } from '../core/status-announcer';
 import { FormAlert } from '../shared/form-alert';
 import {
+  DISCARD_HINT,
   NAME_MAX,
   applyServerError,
   fieldErrorText,
   focusFirstInvalid,
+  invalidSummary,
   revalidate,
   trimmedText,
 } from '../shared/form-errors';
@@ -46,6 +50,9 @@ import {
         @if (formError(); as message) {
           <app-form-alert [message]="message" (dismissed)="formError.set(null)" />
         }
+        @if (discardHint()) {
+          <p class="acts-discard-hint">{{ discardText }}</p>
+        }
         <app-actor-hint id="add-person-submit-hint" />
       </mat-dialog-content>
       <mat-dialog-actions align="end">
@@ -72,6 +79,7 @@ export class AddPersonDialog {
   private readonly people = inject(PersonService);
   private readonly dialogRef = inject<MatDialogRef<AddPersonDialog, string>>(MatDialogRef);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
+  private readonly announcer = inject(StatusAnnouncer);
 
   protected readonly nameMax = NAME_MAX;
   protected readonly name = new FormControl('', {
@@ -82,9 +90,27 @@ export class AddPersonDialog {
   protected readonly pending = signal(false);
   protected readonly formError = signal<string | null>(null);
   protected readonly nameError = signal<string | null>(null);
+  protected readonly discardHint = signal(false);
+  protected readonly discardText = DISCARD_HINT;
 
   constructor() {
     this.name.statusChanges.subscribe(() => this.nameError.set(this.currentNameError()));
+    // Typed text is never discarded by Escape or a backdrop click; only the Cancel button closes the dialog then.
+    this.name.valueChanges.subscribe(() => {
+      this.discardHint.set(false);
+      this.dialogRef.disableClose = this.name.value.trim().length > 0;
+    });
+    const refuse = () => {
+      if (this.dialogRef.disableClose && !this.pending()) {
+        this.discardHint.set(true);
+        this.announcer.announce(DISCARD_HINT);
+      }
+    };
+    this.dialogRef
+      .keydownEvents()
+      .pipe(filter((event) => event.key === 'Escape'))
+      .subscribe(refuse);
+    this.dialogRef.backdropClick().subscribe(refuse);
   }
 
   protected submit(): void {
@@ -96,6 +122,7 @@ export class AddPersonDialog {
     this.name.markAsTouched();
     this.nameError.set(this.currentNameError());
     if (this.form.invalid) {
+      this.announcer.announce(invalidSummary('add the person', [this.name]));
       focusFirstInvalid(this.host);
       return;
     }
@@ -106,7 +133,7 @@ export class AddPersonDialog {
       next: () => this.dialogRef.close(name),
       error: (error: unknown) => {
         this.pending.set(false);
-        this.dialogRef.disableClose = false;
+        this.dialogRef.disableClose = this.name.value.trim().length > 0;
         this.formError.set(
           applyServerError(error, { fields: { name: this.name }, conflict: this.name }),
         );

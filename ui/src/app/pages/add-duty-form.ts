@@ -27,14 +27,17 @@ import { DutyService } from '../api/duty.service';
 import type { AstronautDuty, CreateAstronautDutyRequest, PersonAstronaut } from '../api/models';
 import { ActorHint } from '../core/actor-hint';
 import { ActorRequiredDirective } from '../core/actor-required.directive';
+import { StatusAnnouncer } from '../core/status-announcer';
 import { formatDate, parseIsoDate, todayUtcIsoDate } from '../shared/dates';
 import { FormAlert } from '../shared/form-alert';
 import {
+  DISCARD_HINT,
   REASON_MAX,
   TEXT_MAX,
   applyServerError,
   fieldErrorText,
   focusFirstInvalid,
+  invalidSummary,
   revalidate,
   trimmedText,
 } from '../shared/form-errors';
@@ -65,6 +68,7 @@ export const RETIRED_TITLE = 'RETIRED';
 export class AddDutyForm {
   private readonly duties = inject(DutyService);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
+  private readonly announcer = inject(StatusAnnouncer);
 
   readonly person = input.required<PersonAstronaut>();
   /** The person's duties, in any order. */
@@ -104,9 +108,12 @@ export class AddDutyForm {
   );
   protected readonly pending = signal(false);
   protected readonly formError = signal<string | null>(null);
+  protected readonly discardHint = signal(false);
+  protected readonly discardText = DISCARD_HINT;
 
   constructor() {
     effect(() => this.busy.emit(this.pending()));
+    this.form.valueChanges.pipe(takeUntilDestroyed()).subscribe(() => this.discardHint.set(false));
     // Rules that read the inputs are added here: the controls are created before the inputs are set.
     this.dutyStartDate.addValidators((control) => this.validateDate(control));
     this.reason.addValidators((control) => this.validateReason(control));
@@ -140,6 +147,20 @@ export class AddDutyForm {
     }
   }
 
+  /** Escape closes the form only while it holds no typed text; otherwise it explains how to discard. */
+  protected escape(): void {
+    if (this.pending()) {
+      return;
+    }
+    const typed = [this.rank, this.dutyTitle, this.reason].some((c) => c.value.trim().length > 0);
+    if (typed) {
+      this.discardHint.set(true);
+      this.announcer.announce(DISCARD_HINT);
+      return;
+    }
+    this.cancelled.emit();
+  }
+
   protected submit(): void {
     if (this.pending()) {
       return;
@@ -148,6 +169,7 @@ export class AddDutyForm {
     revalidate(this.form);
     this.form.markAllAsTouched();
     if (this.form.invalid) {
+      this.announcer.announce(invalidSummary('add the duty', Object.values(this.form.controls)));
       focusFirstInvalid(this.host);
       return;
     }

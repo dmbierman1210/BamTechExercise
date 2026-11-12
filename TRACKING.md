@@ -73,7 +73,7 @@ Status: Proposed (issue exists with acceptance criteria, not yet startable) | No
 | - | STAR-11 | [#12](https://github.com/dmbierman1210/BamTechExercise/issues/12) | [UI] People list: search, status badges (non-astronaut / active / retired) | UI | P1 | 5 | In Review | copilot-485825 | STAR-10 |
 | - | STAR-12 | [#13](https://github.com/dmbierman1210/BamTechExercise/issues/13) | [UI] Person detail with astronaut duty timeline | UI | P1 | 5 | In Review | copilot-485825 | STAR-11 |
 | - | STAR-13 | [#14](https://github.com/dmbierman1210/BamTechExercise/issues/14) | [UI] Add duty form (reason required when backdating or after retirement); add and rename person | UI | P1 | 5 | In Review | copilot-485825 | STAR-12 |
-| - | STAR-14 | [#15](https://github.com/dmbierman1210/BamTechExercise/issues/15) | [UI] Production polish: loading/empty/error states, accessibility, responsive layout, UI unit tests | UI | P2 | 5 | Proposed | - | STAR-13 |
+| - | STAR-14 | [#15](https://github.com/dmbierman1210/BamTechExercise/issues/15) | [UI] Production polish: loading/empty/error states, accessibility, responsive layout, UI unit tests | UI | P2 | 5 | In Review | copilot-485825 | STAR-13 |
 | - | STAR-15 | [#16](https://github.com/dmbierman1210/BamTechExercise/issues/16) | [LOG] Process logging of successes and exceptions stored in the database | HARD | P2 | 5 | Proposed | - | STAR-9 merged |
 | - | STAR-16 | [#17](https://github.com/dmbierman1210/BamTechExercise/issues/17) | [TEST] Coverage report and >50% gate on the most impactful handlers | HARD | P2 | 3 | Proposed | - | STAR-9 merged |
 | - | STAR-17 | [#18](https://github.com/dmbierman1210/BamTechExercise/issues/18) | [CI] GitHub Actions: build, test, coverage on every PR | HARD | P3 | 2 | Proposed | - | STAR-16 |

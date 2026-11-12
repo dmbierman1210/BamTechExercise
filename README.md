@@ -75,12 +75,12 @@ HTTP status equals `responseCode`. A 500 also carries a `traceId` that finds the
 [`docs/api/openapi.yaml`](docs/api/openapi.yaml). An example with the API running (PowerShell):
 
 ```powershell
-curl.exe -s -X POST http://localhost:5204/Person -H "Content-Type: application/json" -H "X-Actor: me" -d '{\"name\": \"Ada Stone\"}'
-curl.exe -s -X POST http://localhost:5204/AstronautDuty -H "Content-Type: application/json" -H "X-Actor: me" -d '{\"name\": \"Ada Stone\", \"rank\": \"CPT\", \"dutyTitle\": \"Pilot\", \"dutyStartDate\": \"2020-01-01\"}'
+'{"name":"Ada Stone"}' | curl.exe -s -X POST http://localhost:5204/Person -H "Content-Type: application/json" -H "X-Actor: me" --data-binary "@-"
+'{"name":"Ada Stone","rank":"CPT","dutyTitle":"Pilot","dutyStartDate":"2020-01-01"}' | curl.exe -s -X POST http://localhost:5204/AstronautDuty -H "Content-Type: application/json" -H "X-Actor: me" --data-binary "@-"
 curl.exe -s http://localhost:5204/AstronautDuty/Ada%20Stone
 ```
 
-On macOS or Linux use `curl` and plain single-quoted JSON without the backslashes.
+On macOS or Linux use `curl` and `-d '{"name":"Ada Stone"}'`.
 
 ## Run the tests
 
@@ -97,7 +97,8 @@ npm run lint
 npm run format:check
 npm test                                       # 232 UI unit tests (Vitest, jsdom) and the mock-server tests
 npm run build                                  # production build with bundle budgets
-npm run e2e                                    # Playwright smoke test against the real API (see ui/README.md)
+npx playwright install chromium                # one-time browser download for the smoke test
+npm run e2e                                    # Playwright smoke test against the real API; port 5204 must be free (see ui/README.md)
 ```
 
 **Coverage** (`./tests/coverage.ps1` on this commit, 166 tests): total line coverage **98.99 percent**, `Business/`

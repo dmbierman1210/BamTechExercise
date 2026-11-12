@@ -30,7 +30,8 @@ The list is the baseline analysis in `TRACKING.md` ("Baseline findings", 2026-11
 | 11d | Swagger only in Development | **Deferred on purpose** | Exposing API documentation outside Development is a deployment decision; there is no deployment in this exercise |
 | 12 | Repo hygiene: `extracted/` untracked, stale `net7.0` `bin/` and `obj/`, no `.gitignore`, no solution file | Fixed | STAR-1 (committed directly to `main`) |
 
-Also fixed along the way: the six nullable warnings in the build (the build now runs with warnings as errors).
+Also fixed along the way: the six nullable warnings in the build. The documented build command
+(`dotnet build StargateAPI.sln -warnaserror`) treats warnings as errors and passes with none.
 
 ## 2. Design decisions
 
@@ -57,9 +58,10 @@ Also fixed along the way: the six nullable warnings in the build (the build now 
 
 ## 3. What was deliberately left out
 
-- **Correct or void a duty** (STAR-20, stretch). Duties cannot be edited or removed after the fact; a wrong entry is
-  corrected by adding a backdated duty with a reason. The intended design (a soft void, never a hard delete, with an
-  audit trail) is recorded as D8 and in issue #21.
+- **Correct or void a duty** (STAR-20, stretch). Duties cannot be edited or removed after the fact. A backdated duty with a
+  reason can fill in or correct the history before the latest duty, but a wrong latest entry (for example a wrong rank
+  or title) cannot be corrected until STAR-20: a second duty on the same start date is refused with 409. The intended
+  design (a soft void, never a hard delete, with an audit trail) is recorded as D8 and in issue #21.
 - **Real login** (STAR-21, stretch). The actor is a self-declared name, labelled "not verified" in the UI. Accounts,
   sessions and roles need owner decisions first.
 - **Swagger outside Development, HTTPS and hosting.** There is no deployment, so no production configuration,

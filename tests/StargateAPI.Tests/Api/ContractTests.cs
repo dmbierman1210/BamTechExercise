@@ -92,6 +92,21 @@ public class ContractTests
     }
 
     [Fact]
+    public async Task Server_error_documents_the_trace_id_in_both_the_contract_and_swagger()
+    {
+        var contract = File.ReadAllText(Path.Combine(RepositoryRoot(), "docs", "api", "openapi.yaml"));
+        Assert.Matches(@"(?s)ServerErrorResponse:.*?required: \[traceId\].*?traceId:\s*\n\s+type: string", contract);
+        Assert.Matches(@"(?s)InternalServerError:.*?schemas/ServerErrorResponse", contract);
+
+        using var api = new ApiFactory();
+        using var client = api.CreateClient();
+        using var swagger = JsonDocument.Parse(await client.GetStringAsync("/swagger/v1/swagger.json"));
+
+        var schema = swagger.RootElement.GetProperty("components").GetProperty("schemas").GetProperty("ServerErrorResponse");
+        Assert.True(schema.GetProperty("properties").TryGetProperty("traceId", out _));
+    }
+
+    [Fact]
     public void Controllers_have_no_try_or_catch_blocks()
     {
         var controllers = Directory.GetFiles(Path.Combine(RepositoryRoot(), "api", "Controllers"), "*.cs");

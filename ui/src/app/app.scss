@@ -1,0 +1,114 @@
+:host {
+  display: block;
+  height: 100dvh;
+}
+
+.skip-link {
+  position: absolute;
+  top: -4rem;
+  left: var(--acts-space-2);
+  z-index: 1000;
+  padding: var(--acts-space-2) var(--acts-space-3);
+  border-radius: var(--acts-radius);
+  background: var(--acts-accent);
+  color: var(--acts-on-accent);
+  &:focus {
+    top: var(--acts-space-2);
+  }
+}
+
+.shell {
+  height: 100%;
+  background: var(--acts-bg);
+}
+
+.shell-nav {
+  width: min(18rem, 80vw);
+  background: var(--acts-surface);
+  border-right: 1px solid var(--acts-border);
+}
+
+.shell-nav-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--acts-space-2);
+  padding: var(--acts-space-4);
+  font-family: var(--acts-font-display);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--acts-accent);
+}
+
+.shell-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  gap: var(--acts-space-2);
+  background: var(--acts-surface);
+  color: var(--acts-text);
+  border-bottom: 1px solid var(--acts-border);
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--acts-space-2);
+  padding: var(--acts-space-1) var(--acts-space-2);
+  border-radius: var(--acts-radius);
+  color: var(--acts-accent);
+  font-family: var(--acts-font-display);
+  font-size: 1.125rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-decoration: none;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.toolbar-nav {
+  display: flex;
+  gap: var(--acts-space-1);
+  margin-left: var(--acts-space-4);
+  .active-link {
+    color: var(--acts-accent);
+    background: var(--acts-accent-soft);
+  }
+}
+
+.spacer {
+  flex: 1 1 auto;
+}
+
+.shell-content {
+  background: var(--acts-bg);
+}
+
+.shell-main {
+  display: block;
+  box-sizing: border-box;
+  max-width: 80rem;
+  margin: 0 auto;
+  padding: var(--acts-space-6) var(--acts-space-4);
+  &:focus {
+    outline: none;
+  }
+}
+
+.brand-short {
+  display: none;
+}
+
+@media (max-width: 599.98px) {
+  .brand-full {
+    display: none;
+  }
+  .brand-short {
+    display: inline;
+  }
+  .shell-toolbar {
+    padding-inline: var(--acts-space-2);
+  }
+  .shell-main {
+    padding: var(--acts-space-4) var(--acts-space-3);
+  }
+}

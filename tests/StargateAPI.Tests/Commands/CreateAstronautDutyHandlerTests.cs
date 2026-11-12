@@ -223,6 +223,40 @@ public class CreateAstronautDutyHandlerTests
     }
 
     [Fact]
+    public async Task The_future_reason_rule_is_part_of_validation_and_comes_before_404_and_409()
+    {
+        using var db = new TestDatabase();
+        await AddPersonAsync(db, "John Doe");
+        await AddAsync(db, "John Doe", "CPT", "Pilot", "2025-07-01", reason: "Planned.");
+        await AddAsync(db, "John Doe", "CPT", DutyTitles.RetiredDutyTitle, "2025-08-01", reason: "Planned.");
+
+        var unknownPerson = await AddAsync(db, "Nobody", "CPT", "Pilot", "2025-09-01");
+        var sameDate = await AddAsync(db, "John Doe", "CPT", "Pilot", "2025-07-01");
+        var afterRetirement = await AddAsync(db, "John Doe", "CPT", "Pilot", "2025-09-01");
+
+        foreach (var result in new[] { unknownPerson, sameDate, afterRetirement })
+        {
+            Assert.Equal(400, result.ResponseCode);
+            var error = Assert.Single(result.Errors!);
+            Assert.Equal("reason", error.Field);
+            Assert.Equal("A reason is required when the duty starts in the future.", error.Message);
+        }
+    }
+
+    [Fact]
+    public async Task Conflicts_come_before_the_rules_that_depend_on_the_duty_history()
+    {
+        using var db = new TestDatabase();
+        await AddPersonAsync(db, "John Doe");
+        await AddAsync(db, "John Doe", "CPT", "Pilot", "2024-03-01");
+        await AddAsync(db, "John Doe", "CPT", DutyTitles.RetiredDutyTitle, "2024-09-01");
+
+        var result = await AddAsync(db, "John Doe", "CPT", "Pilot", "2024-03-01");
+
+        Assert.Equal(409, result.ResponseCode);
+    }
+
+    [Fact]
     public async Task A_backdated_duty_without_a_reason_is_400_and_changes_nothing()
     {
         using var db = new TestDatabase();

@@ -58,6 +58,14 @@ namespace StargateAPI.Business.Commands
             var dutyTitle = ValidateText(request.DutyTitle, "dutyTitle", "duty title", MaxDutyTitleLength, errors);
             var startDate = ParseDate(request.DutyStartDate, errors);
             var reason = ValidateReason(request.Reason, errors);
+            var today = DateOnly.FromDateTime(_time.GetUtcNow().UtcDateTime);
+
+            // Depends only on the request, so it is part of the first validation step (before 404 and 409).
+            if (reason is null && startDate > today && !errors.Any(e => e.Field == "reason"))
+            {
+                errors.Add(new FieldError("reason", "A reason is required when the duty starts in the future."));
+            }
+
             var actor = ActorRules.Require(_actorProvider, errors);
 
             if (errors.Count > 0 || name is null || rank is null || dutyTitle is null || startDate is null || actor is null)
@@ -86,8 +94,7 @@ namespace StargateAPI.Business.Commands
                     return Conflict("The person already has a duty starting on this date.");
                 }
 
-                var today = DateOnly.FromDateTime(_time.GetUtcNow().UtcDateTime);
-                var missingReason = reason is null ? ReasonRequiredMessage(timeline, startDate.Value, today) : null;
+                var missingReason = reason is null ? HistoryReasonRequiredMessage(timeline, startDate.Value) : null;
                 if (missingReason is not null)
                 {
                     return ResponseFactory.Invalid<CreateAstronautDutyResult>(new List<FieldError> { new("reason", missingReason) });
@@ -191,8 +198,8 @@ namespace StargateAPI.Business.Commands
             return changed;
         }
 
-        /// <summary>The message for the missing reason when the new duty needs one, otherwise null.</summary>
-        private static string? ReasonRequiredMessage(List<AstronautDuty> timeline, DateOnly startDate, DateOnly today)
+        /// <summary>The message for the missing reason when the duty history makes the new duty a correction, otherwise null.</summary>
+        private static string? HistoryReasonRequiredMessage(List<AstronautDuty> timeline, DateOnly startDate)
         {
             if (timeline.Count > 0 && startDate < timeline[^1].DutyStartDate)
             {
@@ -202,11 +209,6 @@ namespace StargateAPI.Business.Commands
             if (timeline.Count > 0 && DutyTitles.IsRetired(timeline[^1].DutyTitle))
             {
                 return "A reason is required to add a duty after the person has retired.";
-            }
-
-            if (startDate > today)
-            {
-                return "A reason is required when the duty starts in the future.";
             }
 
             return null;

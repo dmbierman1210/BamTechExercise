@@ -176,6 +176,31 @@ public class DatabaseLoggingTests
     }
 
     [Fact]
+    public async Task Entries_still_queued_or_mid_write_are_stored_when_the_host_stops()
+    {
+        using var db = new TestDatabase();
+        var services = new ServiceCollection();
+        services.AddScoped(_ => db.CreateContext());
+        using var provider = services.BuildServiceProvider();
+
+        var queue = new DatabaseLogQueue();
+        var writer = new DatabaseLogWriter(queue, provider.GetRequiredService<IServiceScopeFactory>(),
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<DatabaseLogWriter>.Instance);
+
+        await writer.StartAsync(CancellationToken.None);
+        for (var i = 0; i < 250; i++)
+        {
+            Assert.True(queue.TryEnqueue(new LogEntry { Category = "Test", Message = $"entry {i}", Level = LogLevel.Information, TimestampUtc = DateTime.UtcNow }));
+        }
+
+        await writer.StopAsync(CancellationToken.None);
+
+        using var context = db.CreateContext();
+        Assert.Equal(250, await context.LogEntries.CountAsync());
+        Assert.Equal(0, queue.Pending);
+    }
+
+    [Fact]
     public void A_full_queue_drops_entries_instead_of_blocking()
     {
         var queue = new DatabaseLogQueue(capacity: 2);

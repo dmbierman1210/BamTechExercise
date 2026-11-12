@@ -11,6 +11,7 @@ namespace StargateAPI.Business.Logging
     public sealed class DatabaseLogWriter : BackgroundService
     {
         private const int BatchSize = 100;
+        private static readonly TimeSpan WriteTimeout = TimeSpan.FromSeconds(10);
 
         private readonly DatabaseLogQueue _queue;
         private readonly IServiceScopeFactory _scopes;
@@ -29,7 +30,7 @@ namespace StargateAPI.Business.Logging
             {
                 while (await _queue.Reader.WaitToReadAsync(stoppingToken))
                 {
-                    await DrainAsync(stoppingToken);
+                    await DrainAsync(CancellationToken.None);
                 }
             }
             catch (OperationCanceledException)
@@ -46,6 +47,8 @@ namespace StargateAPI.Business.Logging
             await DrainAsync(cancellationToken);
         }
 
+        // A batch already taken from the queue is always written (or dropped on a failure or the timeout), even
+        // while the host is stopping; only the caller's token ends the loop.
         private async Task DrainAsync(CancellationToken cancellationToken)
         {
             var batch = new List<LogEntry>(BatchSize);
@@ -65,9 +68,10 @@ namespace StargateAPI.Business.Logging
 
                 try
                 {
-                    await WriteAsync(batch, cancellationToken);
+                    using var timeout = new CancellationTokenSource(WriteTimeout);
+                    await WriteAsync(batch, timeout.Token);
                 }
-                catch (Exception ex) when (ex is not OperationCanceledException)
+                catch (Exception ex)
                 {
                     _logger.LogWarning(ex, "Dropped {Count} log entries because the log store could not be written.", batch.Count);
                 }

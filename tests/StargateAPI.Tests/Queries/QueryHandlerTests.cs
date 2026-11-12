@@ -91,7 +91,98 @@ public class QueryHandlerTests
         Assert.Equal("Jack Rourke", result.Person?.Name);
         Assert.Equal(
             new[] { new DateOnly(2022, 9, 5), new DateOnly(2018, 2, 15), new DateOnly(2014, 8, 1) },
-            result.AstronautDuties.Select(d => d.DutyStartDate));
+            result.AstronautDuties!.Select(d => d.DutyStartDate));
+    }
+
+    [Fact]
+    public async Task GetAstronautDutiesByName_for_an_unknown_name_is_404()
+    {
+        using var db = await SeededDatabaseAsync();
+        using var context = db.CreateContext();
+
+        var result = await new GetAstronautDutiesByNameHandler(context)
+            .Handle(new GetAstronautDutiesByName { Name = "Nobody Here" }, default);
+
+        Assert.False(result.Success);
+        Assert.Equal(404, result.ResponseCode);
+        Assert.Equal("Person not found.", result.Message);
+        Assert.Null(result.Person);
+        Assert.Null(result.AstronautDuties);
+    }
+
+    [Fact]
+    public async Task GetAstronautDutiesByName_for_a_person_without_duties_is_200_with_an_empty_list()
+    {
+        using var db = await SeededDatabaseAsync();
+        using var context = db.CreateContext();
+
+        var result = await new GetAstronautDutiesByNameHandler(context)
+            .Handle(new GetAstronautDutiesByName { Name = "Ellen Voss" }, default);
+
+        Assert.True(result.Success);
+        Assert.Equal(200, result.ResponseCode);
+        Assert.Equal(AstronautStatus.None, result.Person?.AstronautStatus);
+        Assert.Empty(result.AstronautDuties!);
+    }
+
+    [Theory]
+    [InlineData("  john doe ")]
+    [InlineData("JOHN DOE")]
+    public async Task Lookups_trim_the_name_and_ignore_case(string typed)
+    {
+        using var db = new TestDatabase();
+        using (var context = db.CreateContext())
+        {
+            context.People.Add(new Person { Name = "John Doe" });
+            await context.SaveChangesAsync();
+        }
+
+        using (var context = db.CreateContext())
+        {
+            var person = await new GetPersonByNameHandler(context).Handle(new GetPersonByName { Name = typed }, default);
+            var duties = await new GetAstronautDutiesByNameHandler(context).Handle(new GetAstronautDutiesByName { Name = typed }, default);
+
+            Assert.Equal("John Doe", person.Person?.Name);
+            Assert.Equal("John Doe", duties.Person?.Name);
+        }
+    }
+
+    [Fact]
+    public async Task GetPersonByName_for_an_unknown_name_is_404()
+    {
+        using var db = await SeededDatabaseAsync();
+        using var context = db.CreateContext();
+
+        var result = await new GetPersonByNameHandler(context).Handle(new GetPersonByName { Name = "Nobody Here" }, default);
+
+        Assert.False(result.Success);
+        Assert.Equal(404, result.ResponseCode);
+        Assert.Null(result.Person);
+    }
+
+    [Fact]
+    public async Task Duty_and_not_found_bodies_match_the_contract_shape()
+    {
+        using var db = await SeededDatabaseAsync();
+        using var context = db.CreateContext();
+        var options = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+
+        var found = await new GetAstronautDutiesByNameHandler(context)
+            .Handle(new GetAstronautDutiesByName { Name = "Jack Rourke" }, default);
+        var missing = await new GetAstronautDutiesByNameHandler(context)
+            .Handle(new GetAstronautDutiesByName { Name = "Nobody Here" }, default);
+
+        using var foundJson = JsonDocument.Parse(JsonSerializer.Serialize(found, options));
+        var duty = foundJson.RootElement.GetProperty("astronautDuties")[0];
+        Assert.Equal(
+            new[] { "id", "personId", "rank", "dutyTitle", "dutyStartDate", "dutyEndDate", "reason" },
+            duty.EnumerateObject().Select(p => p.Name));
+        Assert.Equal("2022-09-05", duty.GetProperty("dutyStartDate").GetString());
+
+        using var missingJson = JsonDocument.Parse(JsonSerializer.Serialize(missing, options));
+        Assert.Equal(
+            new[] { "success", "message", "responseCode" },
+            missingJson.RootElement.EnumerateObject().Select(p => p.Name));
     }
 
     [Theory]
@@ -107,8 +198,10 @@ public class QueryHandlerTests
             .Handle(new GetAstronautDutiesByName { Name = name }, default);
 
         Assert.Null(byName.Person);
+        Assert.Equal(404, byName.ResponseCode);
         Assert.Null(duties.Person);
-        Assert.Empty(duties.AstronautDuties);
+        Assert.Null(duties.AstronautDuties);
+        Assert.Equal(404, duties.ResponseCode);
         Assert.Equal(6, await context.People.CountAsync());
         Assert.True(await context.AstronautDuties.AnyAsync());
         Assert.True(await context.AstronautDetails.AnyAsync());

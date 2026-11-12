@@ -1,3 +1,5 @@
+using System.Net;
+using System.Text.Json.Serialization;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using StargateAPI.Business.Data;
@@ -22,39 +24,44 @@ namespace StargateAPI.Business.Queries
 
         public async Task<GetAstronautDutiesByNameResult> Handle(GetAstronautDutiesByName request, CancellationToken cancellationToken)
         {
-
-            var result = new GetAstronautDutiesByNameResult();
-
             var person = await _context.People
                 .AsNoTracking()
-                .Where(p => p.Name == request.Name)
+                .WithName(request.Name)
                 .Select(PersonAstronaut.Projection)
                 .FirstOrDefaultAsync(cancellationToken);
 
-            result.Person = person;
-
             if (person is null)
             {
-                result.Success = false;
-                result.Message = "Person not found";
-                result.ResponseCode = (int)System.Net.HttpStatusCode.NotFound;
-                return result;
+                return new GetAstronautDutiesByNameResult
+                {
+                    Success = false,
+                    Message = "Person not found.",
+                    ResponseCode = (int)HttpStatusCode.NotFound,
+                };
             }
 
-            result.AstronautDuties = await _context.AstronautDuties
+            var duties = await _context.AstronautDuties
                 .AsNoTracking()
                 .Where(d => d.PersonId == person.PersonId)
                 .OrderByDescending(d => d.DutyStartDate)
+                .Select(AstronautDutyDto.Projection)
                 .ToListAsync(cancellationToken);
 
-            return result;
-
+            return new GetAstronautDutiesByNameResult
+            {
+                Person = person,
+                AstronautDuties = duties,
+            };
         }
     }
 
     public class GetAstronautDutiesByNameResult : BaseResponse
     {
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public PersonAstronaut? Person { get; set; }
-        public List<AstronautDuty> AstronautDuties { get; set; } = new List<AstronautDuty>();
+
+        // Null only for a 404, so the property is left out of the body.
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public List<AstronautDutyDto>? AstronautDuties { get; set; }
     }
 }

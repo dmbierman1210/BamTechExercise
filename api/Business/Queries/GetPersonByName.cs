@@ -1,3 +1,5 @@
+using System.Net;
+using System.Text.Json.Serialization;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using StargateAPI.Business.Data;
@@ -25,9 +27,16 @@ namespace StargateAPI.Business.Queries
 
             result.Person = await _context.People
                 .AsNoTracking()
-                .Where(p => p.Name == request.Name)
+                .WithName(request.Name)
                 .Select(PersonAstronaut.Projection)
                 .FirstOrDefaultAsync(cancellationToken);
+
+            if (result.Person is null)
+            {
+                result.Success = false;
+                result.Message = "Person not found.";
+                result.ResponseCode = (int)HttpStatusCode.NotFound;
+            }
 
             return result;
         }
@@ -35,6 +44,7 @@ namespace StargateAPI.Business.Queries
 
     public class GetPersonByNameResult : BaseResponse
     {
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public PersonAstronaut? Person { get; set; }
     }
 }

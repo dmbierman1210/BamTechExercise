@@ -10,11 +10,13 @@ dotnet test -p:CollectCoverage=false     # for a filtered run (--filter ...), wh
 
 Coverage is collected on every `dotnet test` (coverlet, configured in `tests/StargateAPI.Tests/StargateAPI.Tests.csproj`)
 and the run **fails if total line coverage drops below 50%**. Only generated code is excluded: `Business/Migrations/*`
-and the `Program.cs` bootstrap. The report is written to `coverage/` (git-ignored).
+and anything marked `[GeneratedCode]`. `Program.cs` is hand-written and counted. The report is written to `coverage/`
+(git-ignored).
 
-Measured when this was written: total line coverage 100% and `Business/` 100% with those exclusions (85% total if the
-migrations and `Program.cs` are counted). The floor is deliberately lower than the current number so that it catches a
-regression without blocking small, well-tested changes; the target for `Business/` is 70% or more.
+Measured when this was written: total line coverage 99.5% and `Business/` 99.3% (85% total if the migrations are
+counted, because generated migration code is mostly not exercised line by line). The floor is deliberately lower than
+the current number so that it catches a regression without blocking small, well-tested changes; the target for
+`Business/` is 70% or more.
 
 ## How the tests are built
 

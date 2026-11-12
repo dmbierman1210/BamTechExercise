@@ -12,8 +12,8 @@
          Filtered local runs can opt out with -p:CollectCoverage=false. Only generated code is excluded. -->
     <CollectCoverage>true</CollectCoverage>
     <Include>[StargateAPI]*</Include>
-    <ExcludeByFile>**/Migrations/*.cs,**/Program.cs</ExcludeByFile>
-    <ExcludeByAttribute>GeneratedCodeAttribute,CompilerGeneratedAttribute</ExcludeByAttribute>
+    <ExcludeByFile>**/Migrations/*.cs</ExcludeByFile>
+    <ExcludeByAttribute>GeneratedCodeAttribute</ExcludeByAttribute>
     <CoverletOutputFormat>cobertura</CoverletOutputFormat>
     <CoverletOutput>$(MSBuildThisFileDirectory)../../coverage/coverage</CoverletOutput>
     <Threshold>50</Threshold>

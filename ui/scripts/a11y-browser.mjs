@@ -1,9 +1,8 @@
 // Runs axe-core (all rules, including color-contrast) against the running app in a real browser, at desktop and
 // phone width, and exits 1 when there is a serious or critical violation.
 //
-//   npm run start:mock        (terminal 1)
-//   npm run start:app         (terminal 2)
-//   npm run a11y:browser      (terminal 3)
+//   npm run start:with-mock   (terminal 1: the mock API and the app built against it)
+//   npm run a11y:browser      (terminal 2)
 //
 // playwright-core is NOT a dependency of this repo. Point PLAYWRIGHT_CORE_DIR at an install of it, and BROWSER_PATH
 // at a Chromium-based browser (defaults: %TEMP%/pw-scratch/node_modules/playwright-core and Edge on Windows).

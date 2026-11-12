@@ -115,6 +115,16 @@ describe('App shell', () => {
       expect(document.activeElement).toBe(document.body);
     });
 
+    it('does not steal focus on a direct link to a person page (the skip link stays the first tab stop)', async () => {
+      const fixture = render();
+      const router = TestBed.inject(Router);
+      await router.navigateByUrl('/people/John%20Doe');
+      await fixture.whenStable();
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      expect(heading(fixture)?.textContent).toContain('John Doe');
+      expect(document.activeElement).toBe(document.body);
+    });
+
     it('moves focus to the new page heading when the page changes', async () => {
       const fixture = render();
       const router = TestBed.inject(Router);

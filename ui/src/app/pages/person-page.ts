@@ -117,7 +117,6 @@ export class PersonPage {
         this.panel.set('none');
         this.writing.set(false);
         this.load(name);
-        this.focusHeading();
       });
     });
     effect(() => {
@@ -187,10 +186,6 @@ export class PersonPage {
     this.notifier.confirm('Duty added.');
     this.load(this.name(), true);
     this.focusAfterRender(this.dutyButton);
-  }
-
-  private focusHeading(): void {
-    this.focusAfterRender(this.heading);
   }
 
   private focusAfterRender(target: () => ElementRef<HTMLElement> | undefined): void {

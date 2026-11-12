@@ -1,6 +1,6 @@
 // Keyboard-only walkthrough of "Acting as", add person, add duty and rename in a real browser.
 // Only page.keyboard (Tab, Shift+Tab, Enter, Space, Escape and typing) is used: no click(), no fill().
-// Run against a FRESH mock (`npm run start:mock`) and the app (`npm run start:app`), then `npm run walkthrough`.
+// Run against a FRESH mock and the app (`npm run start:with-mock`), then `npm run walkthrough`.
 // Needs playwright-core (not a dependency of this repo): see scripts/a11y-browser.mjs for PLAYWRIGHT_CORE_DIR / BROWSER_PATH.
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';

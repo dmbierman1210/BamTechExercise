@@ -3,6 +3,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using StargateAPI.Business.Auditing;
 using StargateAPI.Business.Data;
+using StargateAPI.Business.Exceptions;
 using StargateAPI.Business.Queries;
 using StargateAPI.Business.Validation;
 using StargateAPI.Controllers;
@@ -43,14 +44,14 @@ namespace StargateAPI.Business.Commands
 
             if (newName is null || actor is null)
             {
-                return ResponseFactory.Invalid<RenamePersonResult>(errors);
+                throw new ValidationFailedException(errors);
             }
 
             var person = await (await _context.PeopleNamedAsync(request.Name, cancellationToken)).FirstOrDefaultAsync(cancellationToken);
 
             if (person is null)
             {
-                return ResponseFactory.PersonNotFound<RenamePersonResult>();
+                throw NotFoundException.Person();
             }
 
             // The very same name is a no-op; a change of letter case only is a real rename.
@@ -61,7 +62,7 @@ namespace StargateAPI.Business.Commands
 
             if (await PersonNameRules.IsTakenAsync(_context, newName, person.Id, cancellationToken))
             {
-                return ResponseFactory.DuplicateName<RenamePersonResult>();
+                throw ConflictException.DuplicateName();
             }
 
             var before = JsonSerializer.Serialize(new { name = person.Name });
@@ -85,7 +86,7 @@ namespace StargateAPI.Business.Commands
             }
             catch (DbUpdateException ex) when (DbErrors.IsUniqueViolation(ex))
             {
-                return ResponseFactory.DuplicateName<RenamePersonResult>();
+                throw ConflictException.DuplicateName();
             }
 
             return new RenamePersonResult();

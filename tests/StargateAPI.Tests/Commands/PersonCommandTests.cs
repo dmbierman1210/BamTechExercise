@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore.Diagnostics;
 using StargateAPI.Business.Auditing;
 using StargateAPI.Business.Commands;
 using StargateAPI.Business.Data;
+using StargateAPI.Business.Exceptions;
 using StargateAPI.Business.Queries;
 using StargateAPI.Controllers;
 
@@ -12,18 +13,18 @@ namespace StargateAPI.Tests.Commands;
 
 public class PersonCommandTests
 {
-    private static Task<CreatePersonResult> CreateAsync(TestDatabase db, string? name, string? actor = FixedActorProvider.DefaultActor)
+    private static async Task<CreatePersonResult> CreateAsync(TestDatabase db, string? name, string? actor = FixedActorProvider.DefaultActor)
     {
         using var context = db.CreateContext();
-        return new CreatePersonHandler(context, new FixedActorProvider(actor), TimeProvider.System)
-            .Handle(new CreatePerson { Name = name }, default);
+        return await Outcome.Of(() => new CreatePersonHandler(context, new FixedActorProvider(actor), TimeProvider.System)
+            .Handle(new CreatePerson { Name = name }, default));
     }
 
-    private static Task<RenamePersonResult> RenameAsync(TestDatabase db, string name, string? newName, string? actor = FixedActorProvider.DefaultActor)
+    private static async Task<RenamePersonResult> RenameAsync(TestDatabase db, string name, string? newName, string? actor = FixedActorProvider.DefaultActor)
     {
         using var context = db.CreateContext();
-        return new RenamePersonHandler(context, new FixedActorProvider(actor), TimeProvider.System)
-            .Handle(new RenamePerson { Name = name, NewName = newName }, default);
+        return await Outcome.Of(() => new RenamePersonHandler(context, new FixedActorProvider(actor), TimeProvider.System)
+            .Handle(new RenamePerson { Name = name, NewName = newName }, default));
     }
 
     private static async Task<List<AuditEntry>> AuditAsync(TestDatabase db)
@@ -185,8 +186,8 @@ public class PersonCommandTests
         using var db = new TestDatabase();
         using var context = db.CreateContext(new RivalInsertInterceptor("John Doe"));
 
-        var result = await new CreatePersonHandler(context, new FixedActorProvider(), TimeProvider.System)
-            .Handle(new CreatePerson { Name = "John Doe" }, default);
+        var result = await Outcome.Of(() => new CreatePersonHandler(context, new FixedActorProvider(), TimeProvider.System)
+            .Handle(new CreatePerson { Name = "John Doe" }, default));
 
         Assert.Equal(409, result.ResponseCode);
         Assert.Empty(await NamesAsync(db));
@@ -215,9 +216,8 @@ public class PersonCommandTests
         Assert.Equal(3, renamed.AstronautDuties!.Count);
         Assert.Equal("Commander", renamed.Person!.CurrentDutyTitle);
 
-        var old = await new GetAstronautDutiesByNameHandler(context)
-            .Handle(new GetAstronautDutiesByName { Name = "Jack Rourke" }, default);
-        Assert.Equal(404, old.ResponseCode);
+        await Assert.ThrowsAsync<NotFoundException>(() => new GetAstronautDutiesByNameHandler(context)
+            .Handle(new GetAstronautDutiesByName { Name = "Jack Rourke" }, default));
     }
 
     [Fact]
@@ -372,8 +372,8 @@ public class PersonCommandTests
         await CreateAsync(db, "John Doe");
         using var context = db.CreateContext(new RivalInsertInterceptor("Johnathan Doe"));
 
-        var result = await new RenamePersonHandler(context, new FixedActorProvider(), TimeProvider.System)
-            .Handle(new RenamePerson { Name = "John Doe", NewName = "Johnathan Doe" }, default);
+        var result = await Outcome.Of(() => new RenamePersonHandler(context, new FixedActorProvider(), TimeProvider.System)
+            .Handle(new RenamePerson { Name = "John Doe", NewName = "Johnathan Doe" }, default));
 
         Assert.Equal(409, result.ResponseCode);
         Assert.Equal(new[] { "John Doe", "Johnathan Doe" }, await NamesAsync(db));
@@ -381,24 +381,6 @@ public class PersonCommandTests
     }
 
     // ---- audit trail and actor ----
-
-    [Fact]
-    public async Task Response_bodies_match_the_contract_shape()
-    {
-        using var db = new TestDatabase();
-        var web = new JsonSerializerOptions(JsonSerializerDefaults.Web);
-
-        var created = JsonSerializer.Serialize(await CreateAsync(db, "John Doe"), web);
-        var duplicate = JsonSerializer.Serialize(await CreateAsync(db, "john doe"), web);
-        var invalid = JsonSerializer.Serialize(await CreateAsync(db, ""), web);
-
-        Assert.Contains("\"id\":", created);
-        Assert.DoesNotContain("errors", created);
-        Assert.DoesNotContain("\"id\"", duplicate);
-        Assert.DoesNotContain("errors", duplicate);
-        Assert.DoesNotContain("\"id\"", invalid);
-        Assert.Contains("\"errors\":[{\"field\":\"name\",\"message\":\"The name is required.\"}]", invalid);
-    }
 
     [Fact]
     public async Task Audit_entries_cannot_be_updated_or_deleted()

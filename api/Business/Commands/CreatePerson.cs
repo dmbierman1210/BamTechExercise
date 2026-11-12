@@ -1,10 +1,10 @@
 using System.Net;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using StargateAPI.Business.Auditing;
 using StargateAPI.Business.Data;
+using StargateAPI.Business.Exceptions;
 using StargateAPI.Business.Validation;
 using StargateAPI.Controllers;
 
@@ -37,12 +37,12 @@ namespace StargateAPI.Business.Commands
 
             if (name is null || actor is null)
             {
-                return ResponseFactory.Invalid<CreatePersonResult>(errors);
+                throw new ValidationFailedException(errors);
             }
 
             if (await PersonNameRules.IsTakenAsync(_context, name, null, cancellationToken))
             {
-                return ResponseFactory.DuplicateName<CreatePersonResult>();
+                throw ConflictException.DuplicateName();
             }
 
             try
@@ -75,15 +75,13 @@ namespace StargateAPI.Business.Commands
             catch (DbUpdateException ex) when (DbErrors.IsUniqueViolation(ex))
             {
                 // A concurrent request took the name between the check and the insert.
-                return ResponseFactory.DuplicateName<CreatePersonResult>();
+                throw ConflictException.DuplicateName();
             }
         }
     }
 
     public class CreatePersonResult : BaseResponse
     {
-        // Null on failure, so error bodies carry no id (as in the contract).
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        public int? Id { get; set; }
+        public int Id { get; set; }
     }
 }

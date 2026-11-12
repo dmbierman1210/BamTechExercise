@@ -1,4 +1,3 @@
-using System.Net;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using StargateAPI.Business.Data;
@@ -55,31 +54,6 @@ namespace StargateAPI.Business.Validation
 
             return others.Any(other => string.Equals(other, name, StringComparison.OrdinalIgnoreCase));
         }
-    }
-
-    public static class ResponseFactory
-    {
-        public static T Invalid<T>(List<FieldError> errors) where T : BaseResponse, new() => new()
-        {
-            Success = false,
-            Message = "Validation failed.",
-            ResponseCode = (int)HttpStatusCode.BadRequest,
-            Errors = errors,
-        };
-
-        public static T PersonNotFound<T>() where T : BaseResponse, new() => new()
-        {
-            Success = false,
-            Message = "Person not found.",
-            ResponseCode = (int)HttpStatusCode.NotFound,
-        };
-
-        public static T DuplicateName<T>() where T : BaseResponse, new() => new()
-        {
-            Success = false,
-            Message = "A person with this name already exists.",
-            ResponseCode = (int)HttpStatusCode.Conflict,
-        };
     }
 
     public static class DbErrors

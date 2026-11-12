@@ -1,11 +1,11 @@
 using System.Globalization;
 using System.Net;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using StargateAPI.Business.Auditing;
 using StargateAPI.Business.Data;
+using StargateAPI.Business.Exceptions;
 using StargateAPI.Business.Queries;
 using StargateAPI.Business.Validation;
 using StargateAPI.Controllers;
@@ -70,14 +70,14 @@ namespace StargateAPI.Business.Commands
 
             if (errors.Count > 0 || name is null || rank is null || dutyTitle is null || startDate is null || actor is null)
             {
-                return ResponseFactory.Invalid<CreateAstronautDutyResult>(errors);
+                throw new ValidationFailedException(errors);
             }
 
             var person = await (await _context.PeopleNamedAsync(name, cancellationToken)).FirstOrDefaultAsync(cancellationToken);
 
             if (person is null)
             {
-                return ResponseFactory.PersonNotFound<CreateAstronautDutyResult>();
+                throw NotFoundException.Person();
             }
 
             try
@@ -91,13 +91,13 @@ namespace StargateAPI.Business.Commands
 
                 if (timeline.Any(d => d.DutyStartDate == startDate.Value))
                 {
-                    return Conflict("The person already has a duty starting on this date.");
+                    throw ConflictException.DutyStartDateTaken();
                 }
 
                 var missingReason = reason is null ? HistoryReasonRequiredMessage(timeline, startDate.Value) : null;
                 if (missingReason is not null)
                 {
-                    return ResponseFactory.Invalid<CreateAstronautDutyResult>(new List<FieldError> { new("reason", missingReason) });
+                    throw new ValidationFailedException(new[] { new FieldError("reason", missingReason) });
                 }
 
                 var newDuty = new AstronautDuty
@@ -167,7 +167,7 @@ namespace StargateAPI.Business.Commands
             catch (DbUpdateException ex) when (DbErrors.IsUniqueViolation(ex))
             {
                 // A concurrent request added a duty on the same date.
-                return Conflict("The person already has a duty starting on this date.");
+                throw ConflictException.DutyStartDateTaken();
             }
         }
 
@@ -213,13 +213,6 @@ namespace StargateAPI.Business.Commands
 
             return null;
         }
-
-        private static CreateAstronautDutyResult Conflict(string message) => new()
-        {
-            Success = false,
-            Message = message,
-            ResponseCode = (int)HttpStatusCode.Conflict,
-        };
 
         private static string? ValidateText(string? raw, string field, string label, int maxLength, List<FieldError> errors)
         {
@@ -275,8 +268,6 @@ namespace StargateAPI.Business.Commands
 
     public class CreateAstronautDutyResult : BaseResponse
     {
-        // Null on failure, so error bodies carry no id (as in the contract).
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        public int? Id { get; set; }
+        public int Id { get; set; }
     }
 }

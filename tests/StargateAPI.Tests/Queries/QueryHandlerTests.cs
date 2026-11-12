@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using StargateAPI.Business;
 using StargateAPI.Business.Data;
 using StargateAPI.Business.Dtos;
+using StargateAPI.Business.Exceptions;
 using StargateAPI.Business.Queries;
 
 namespace StargateAPI.Tests.Queries;
@@ -100,14 +101,10 @@ public class QueryHandlerTests
         using var db = await SeededDatabaseAsync();
         using var context = db.CreateContext();
 
-        var result = await new GetAstronautDutiesByNameHandler(context)
-            .Handle(new GetAstronautDutiesByName { Name = "Nobody Here" }, default);
+        var thrown = await Assert.ThrowsAsync<NotFoundException>(() => new GetAstronautDutiesByNameHandler(context)
+            .Handle(new GetAstronautDutiesByName { Name = "Nobody Here" }, default));
 
-        Assert.False(result.Success);
-        Assert.Equal(404, result.ResponseCode);
-        Assert.Equal("Person not found.", result.Message);
-        Assert.Null(result.Person);
-        Assert.Null(result.AstronautDuties);
+        Assert.Equal("Person not found.", thrown.Message);
     }
 
     [Fact]
@@ -153,15 +150,12 @@ public class QueryHandlerTests
         using var db = await SeededDatabaseAsync();
         using var context = db.CreateContext();
 
-        var result = await new GetPersonByNameHandler(context).Handle(new GetPersonByName { Name = "Nobody Here" }, default);
-
-        Assert.False(result.Success);
-        Assert.Equal(404, result.ResponseCode);
-        Assert.Null(result.Person);
+        await Assert.ThrowsAsync<NotFoundException>(() => new GetPersonByNameHandler(context)
+            .Handle(new GetPersonByName { Name = "Nobody Here" }, default));
     }
 
     [Fact]
-    public async Task Duty_and_not_found_bodies_match_the_contract_shape()
+    public async Task Duty_bodies_match_the_contract_shape()
     {
         using var db = await SeededDatabaseAsync();
         using var context = db.CreateContext();
@@ -169,8 +163,6 @@ public class QueryHandlerTests
 
         var found = await new GetAstronautDutiesByNameHandler(context)
             .Handle(new GetAstronautDutiesByName { Name = "Jack Rourke" }, default);
-        var missing = await new GetAstronautDutiesByNameHandler(context)
-            .Handle(new GetAstronautDutiesByName { Name = "Nobody Here" }, default);
 
         using var foundJson = JsonDocument.Parse(JsonSerializer.Serialize(found, options));
         var duty = foundJson.RootElement.GetProperty("astronautDuties")[0];
@@ -178,11 +170,6 @@ public class QueryHandlerTests
             new[] { "id", "personId", "rank", "dutyTitle", "dutyStartDate", "dutyEndDate", "reason" },
             duty.EnumerateObject().Select(p => p.Name));
         Assert.Equal("2022-09-05", duty.GetProperty("dutyStartDate").GetString());
-
-        using var missingJson = JsonDocument.Parse(JsonSerializer.Serialize(missing, options));
-        Assert.Equal(
-            new[] { "success", "message", "responseCode" },
-            missingJson.RootElement.EnumerateObject().Select(p => p.Name));
     }
 
     [Theory]
@@ -193,15 +180,11 @@ public class QueryHandlerTests
         using var db = await SeededDatabaseAsync();
         using var context = db.CreateContext();
 
-        var byName = await new GetPersonByNameHandler(context).Handle(new GetPersonByName { Name = name }, default);
-        var duties = await new GetAstronautDutiesByNameHandler(context)
-            .Handle(new GetAstronautDutiesByName { Name = name }, default);
+        await Assert.ThrowsAsync<NotFoundException>(() => new GetPersonByNameHandler(context)
+            .Handle(new GetPersonByName { Name = name }, default));
+        await Assert.ThrowsAsync<NotFoundException>(() => new GetAstronautDutiesByNameHandler(context)
+            .Handle(new GetAstronautDutiesByName { Name = name }, default));
 
-        Assert.Null(byName.Person);
-        Assert.Equal(404, byName.ResponseCode);
-        Assert.Null(duties.Person);
-        Assert.Null(duties.AstronautDuties);
-        Assert.Equal(404, duties.ResponseCode);
         Assert.Equal(6, await context.People.CountAsync());
         Assert.True(await context.AstronautDuties.AnyAsync());
         Assert.True(await context.AstronautDetails.AnyAsync());

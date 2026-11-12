@@ -1,9 +1,8 @@
-using System.Net;
-using System.Text.Json.Serialization;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using StargateAPI.Business.Data;
 using StargateAPI.Business.Dtos;
+using StargateAPI.Business.Exceptions;
 using StargateAPI.Controllers;
 
 namespace StargateAPI.Business.Queries
@@ -27,17 +26,8 @@ namespace StargateAPI.Business.Queries
             var person = await (await _context.PeopleNamedAsync(request.Name, cancellationToken))
                 .AsNoTracking()
                 .Select(PersonAstronaut.Projection)
-                .FirstOrDefaultAsync(cancellationToken);
-
-            if (person is null)
-            {
-                return new GetAstronautDutiesByNameResult
-                {
-                    Success = false,
-                    Message = "Person not found.",
-                    ResponseCode = (int)HttpStatusCode.NotFound,
-                };
-            }
+                .FirstOrDefaultAsync(cancellationToken)
+                ?? throw NotFoundException.Person();
 
             var duties = await _context.AstronautDuties
                 .AsNoTracking()
@@ -56,11 +46,8 @@ namespace StargateAPI.Business.Queries
 
     public class GetAstronautDutiesByNameResult : BaseResponse
     {
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        public PersonAstronaut? Person { get; set; }
+        public required PersonAstronaut Person { get; init; }
 
-        // Null only for a 404, so the property is left out of the body.
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        public List<AstronautDutyDto>? AstronautDuties { get; set; }
+        public List<AstronautDutyDto> AstronautDuties { get; init; } = new();
     }
 }

@@ -1,9 +1,8 @@
-using System.Net;
-using System.Text.Json.Serialization;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using StargateAPI.Business.Data;
 using StargateAPI.Business.Dtos;
+using StargateAPI.Business.Exceptions;
 using StargateAPI.Controllers;
 
 namespace StargateAPI.Business.Queries
@@ -23,27 +22,17 @@ namespace StargateAPI.Business.Queries
 
         public async Task<GetPersonByNameResult> Handle(GetPersonByName request, CancellationToken cancellationToken)
         {
-            var result = new GetPersonByNameResult();
-
-            result.Person = await (await _context.PeopleNamedAsync(request.Name, cancellationToken))
+            var person = await (await _context.PeopleNamedAsync(request.Name, cancellationToken))
                 .AsNoTracking()
                 .Select(PersonAstronaut.Projection)
                 .FirstOrDefaultAsync(cancellationToken);
 
-            if (result.Person is null)
-            {
-                result.Success = false;
-                result.Message = "Person not found.";
-                result.ResponseCode = (int)HttpStatusCode.NotFound;
-            }
-
-            return result;
+            return new GetPersonByNameResult { Person = person ?? throw NotFoundException.Person() };
         }
     }
 
     public class GetPersonByNameResult : BaseResponse
     {
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        public PersonAstronaut? Person { get; set; }
+        public required PersonAstronaut Person { get; init; }
     }
 }

@@ -221,6 +221,26 @@ public class PersonCommandTests
     }
 
     [Fact]
+    public async Task Lookups_and_rename_match_non_ascii_names_ignoring_case()
+    {
+        using var db = new TestDatabase();
+        await CreateAsync(db, "Élodie Martin");
+
+        using (var context = db.CreateContext())
+        {
+            var person = await new GetPersonByNameHandler(context).Handle(new GetPersonByName { Name = " éLODIE martin " }, default);
+            var duties = await new GetAstronautDutiesByNameHandler(context).Handle(new GetAstronautDutiesByName { Name = "ÉLODIE MARTIN" }, default);
+            Assert.Equal("Élodie Martin", person.Person?.Name);
+            Assert.Equal("Élodie Martin", duties.Person?.Name);
+        }
+
+        var result = await RenameAsync(db, "élodie martin", "Élodie Martin-Dupont");
+
+        Assert.Equal(200, result.ResponseCode);
+        Assert.Equal(new[] { "Élodie Martin-Dupont" }, await NamesAsync(db));
+    }
+
+    [Fact]
     public async Task Rename_of_an_unknown_person_is_404()
     {
         using var db = new TestDatabase();

@@ -46,7 +46,7 @@ namespace StargateAPI.Business.Commands
                 return ResponseFactory.Invalid<RenamePersonResult>(errors);
             }
 
-            var person = await _context.People.WithName(request.Name).FirstOrDefaultAsync(cancellationToken);
+            var person = await (await _context.PeopleNamedAsync(request.Name, cancellationToken)).FirstOrDefaultAsync(cancellationToken);
 
             if (person is null)
             {

@@ -24,9 +24,8 @@ namespace StargateAPI.Business.Queries
 
         public async Task<GetAstronautDutiesByNameResult> Handle(GetAstronautDutiesByName request, CancellationToken cancellationToken)
         {
-            var person = await _context.People
+            var person = await (await _context.PeopleNamedAsync(request.Name, cancellationToken))
                 .AsNoTracking()
-                .WithName(request.Name)
                 .Select(PersonAstronaut.Projection)
                 .FirstOrDefaultAsync(cancellationToken);
 

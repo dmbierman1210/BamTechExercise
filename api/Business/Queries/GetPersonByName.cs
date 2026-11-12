@@ -25,9 +25,8 @@ namespace StargateAPI.Business.Queries
         {
             var result = new GetPersonByNameResult();
 
-            result.Person = await _context.People
+            result.Person = await (await _context.PeopleNamedAsync(request.Name, cancellationToken))
                 .AsNoTracking()
-                .WithName(request.Name)
                 .Select(PersonAstronaut.Projection)
                 .FirstOrDefaultAsync(cancellationToken);
 

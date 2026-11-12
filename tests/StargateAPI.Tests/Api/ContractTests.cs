@@ -63,6 +63,25 @@ public class ContractTests
                 foreach (var response in operation.Value.GetProperty("responses").EnumerateObject())
                 {
                     documented.Add($"{operation.Name} {path.Name} {response.Name}");
+
+                    var schema = response.Value.GetProperty("content").EnumerateObject().First().Value.GetProperty("schema").GetProperty("$ref").GetString()!;
+                    var schemaName = schema[(schema.LastIndexOf('/') + 1)..];
+                    var status = int.Parse(response.Name);
+                    var expected = status switch
+                    {
+                        >= 500 => "ServerErrorResponse",
+                        >= 400 => "BaseResponse",
+                        _ => null,
+                    };
+
+                    if (expected is not null)
+                    {
+                        Assert.True(schemaName == expected, $"{operation.Name} {path.Name} {status} should be {expected} but is {schemaName}");
+                    }
+                    else
+                    {
+                        Assert.EndsWith("Result", schemaName);
+                    }
                 }
             }
         }

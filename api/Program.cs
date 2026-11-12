@@ -32,6 +32,10 @@ builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 
+// The exception middleware logs every exception at Error, including the expected 400/404/409 ones, before the
+// handler runs. The handler logs real failures itself (with the trace id), so the framework's entry is dropped.
+builder.Logging.AddFilter("Microsoft.AspNetCore.Diagnostics.ExceptionHandlerMiddleware", LogLevel.Critical);
+
 var app = builder.Build();
 
 using (var scope = app.Services.CreateScope())

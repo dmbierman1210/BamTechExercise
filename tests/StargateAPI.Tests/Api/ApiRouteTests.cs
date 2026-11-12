@@ -1,4 +1,5 @@
 using System.Net;
+using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 using StargateAPI.Business.Auditing;
 
@@ -339,18 +340,43 @@ public class ApiRouteTests
 
     // ---- unexpected failures ----
 
-    private sealed class ExplodingActorProvider : IActorProvider
+    private sealed class ThrowingMediator : IMediator
     {
-        public string? Actor => throw new InvalidOperationException("secret connection string and internal detail");
+        private static InvalidOperationException Boom() => new("secret connection string and internal detail");
+
+        public Task<TResponse> Send<TResponse>(IRequest<TResponse> request, CancellationToken cancellationToken = default) => throw Boom();
+
+        public Task Send<TRequest>(TRequest request, CancellationToken cancellationToken = default) where TRequest : IRequest => throw Boom();
+
+        public Task<object?> Send(object request, CancellationToken cancellationToken = default) => throw Boom();
+
+        public IAsyncEnumerable<TResponse> CreateStream<TResponse>(IStreamRequest<TResponse> request, CancellationToken cancellationToken = default) => throw Boom();
+
+        public IAsyncEnumerable<object?> CreateStream(object request, CancellationToken cancellationToken = default) => throw Boom();
+
+        public Task Publish(object notification, CancellationToken cancellationToken = default) => throw Boom();
+
+        public Task Publish<TNotification>(TNotification notification, CancellationToken cancellationToken = default) where TNotification : INotification => throw Boom();
     }
 
-    [Fact]
-    public async Task An_unexpected_failure_is_a_generic_500_with_a_trace_id_and_no_internals()
+    public static IEnumerable<object[]> EveryRoute() => new[]
     {
-        using var api = new ApiFactory(services => services.AddScoped<IActorProvider, ExplodingActorProvider>());
+        new object[] { "GET", "/Person", "" },
+        new object[] { "GET", "/Person/Jack%20Rourke", "" },
+        new object[] { "POST", "/Person", """{ "name": "Alan Shepard" }""" },
+        new object[] { "PUT", "/Person/Jack%20Rourke", """{ "newName": "Jonathan Rourke" }""" },
+        new object[] { "GET", "/AstronautDuty/Jack%20Rourke", "" },
+        new object[] { "POST", "/AstronautDuty", """{ "name": "Ellen Voss", "rank": "1LT", "dutyTitle": "Pilot", "dutyStartDate": "2024-03-01" }""" },
+    };
+
+    [Theory]
+    [MemberData(nameof(EveryRoute))]
+    public async Task An_unexpected_failure_is_a_generic_500_with_a_trace_id_and_no_internals_on_every_route(string method, string path, string body)
+    {
+        using var api = new ApiFactory(services => services.AddScoped<IMediator, ThrowingMediator>());
         using var client = api.CreateClient();
 
-        var response = await client.PostAsync("/Person", """{ "name": "Alan Shepard" }""");
+        var response = await client.SendAsync(new HttpMethod(method), path, body.Length == 0 ? null : body);
 
         Assert.Equal(HttpStatusCode.InternalServerError, response.Status);
         response.AssertEnvelope(success: false);
@@ -360,6 +386,24 @@ public class ApiRouteTests
         Assert.DoesNotContain("InvalidOperationException", response.Raw);
         Assert.DoesNotContain("StargateAPI", response.Raw);
         Assert.DoesNotContain(" at ", response.Raw);
+    }
+
+    private sealed class ExplodingActorProvider : IActorProvider
+    {
+        public string? Actor => throw new InvalidOperationException("secret connection string and internal detail");
+    }
+
+    [Fact]
+    public async Task A_failure_inside_a_handler_is_also_a_generic_500()
+    {
+        using var api = new ApiFactory(services => services.AddScoped<IActorProvider, ExplodingActorProvider>());
+        using var client = api.CreateClient();
+
+        var response = await client.PostAsync("/Person", """{ "name": "Alan Shepard" }""");
+
+        Assert.Equal(HttpStatusCode.InternalServerError, response.Status);
+        Assert.Equal("An unexpected error occurred.", response.Json.GetProperty("message").GetString());
+        Assert.DoesNotContain("secret", response.Raw, StringComparison.OrdinalIgnoreCase);
     }
 
     private static void AssertNoFrameworkProblemDetails(ApiResponse response)

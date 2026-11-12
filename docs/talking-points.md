@@ -171,7 +171,7 @@ Lanes so far (all merged by me unless noted):
 | API | STAR-3 to STAR-9 (7 stories) | The fixed and hardened API, landed as one release PR |
 | UI | STAR-10 to STAR-14 (5 stories) | The Angular app, against the mock |
 | Hardening | STAR-15 to STAR-17 (3 stories) | Logging, coverage gate, CI workflow |
-| Integration | STAR-18, STAR-19 | **Running now** (see section 7) |
+| Integration | STAR-18, STAR-19 | STAR-18 built and in review, STAR-19 in progress (see section 7) |
 
 ### 5.4 What I personally did versus what the agents did
 
@@ -214,9 +214,9 @@ flowchart LR
     A["Repo layout + contract<br/>STAR-1, 2<br/>DONE"] --> B["Hardened API<br/>STAR-3 to 9<br/>DONE, merged"]
     A --> C["Angular UI<br/>STAR-10 to 14<br/>DONE, merged"]
     B --> D["Logging, coverage gate, CI file<br/>STAR-15 to 17<br/>DONE, merged<br/>(CI never ran)"]
-    B --> E["Wire UI to the real API<br/>STAR-18<br/>IN PROGRESS"]
+    B --> E["Wire UI to the real API<br/>STAR-18<br/>BUILT, PRs OPEN"]
     C --> E
-    E --> F["README + design notes<br/>STAR-19<br/>QUEUED, same run"]
+    E --> F["README + design notes<br/>STAR-19<br/>IN PROGRESS"]
     B --> G["Correct or void a duty<br/>STAR-20<br/>REFINED, NOT STARTED"]
     G --> H["Login<br/>STAR-21<br/>NOT REFINED"]
 ```
@@ -228,9 +228,11 @@ flowchart LR
 
 ### In progress
 
-- **STAR-18**: connect the UI to the real API (CORS, remove the mock as the default, an end-to-end test). Until this is merged,
-  the UI's default build still talks to the **mock** API, not the real one. Say this plainly if asked.
-- **STAR-19**: the README and design notes. Queued in the same marathon.
+- **STAR-18**: connect the UI to the real API (CORS, remove the mock as the default, an end-to-end test). **Built; its two PRs (#45
+  contract, #46 integration) are open waiting for my review and merge.** Until they are merged, the UI's default build still talks to the
+  **mock** API, not the real one. Say this plainly if asked. The two PRs are stacked, so merge them top-down (#46 first, then #45) or
+  check the diff contains everything.
+- **STAR-19**: the README and design notes. Being written now by the same marathon.
 
 ### Not done (and what to say)
 

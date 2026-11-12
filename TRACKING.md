@@ -31,11 +31,12 @@ Last updated: 2026-11-12.
 5. **Questions.** Try your own sources (code, issue, ADRs, `docs/api/openapi.yaml`, public docs) first, then the PM, then the human. Architecture, security, scope/acceptance and licensing questions go straight to the human; marathon agents park the story instead of guessing.
 6. **Review.** Open the PR, then have a fresh context-free review agent post findings as a PR comment. Fix valid findings; send "valid but later" findings to the PM as follow-up stories.
 7. **Run-and-look.** If a story touches UI or any API behavior that can run locally, launch it and exercise the change before opening the PR; record route, steps and result in the PR and issue. If it cannot run, say why. Server-only/docs changes with no client-observable effect: write "N/A: no client impact".
-8. **No-merge rule.** No agent merges a PR, enables auto-merge, or completes it through an API, ever. Open the PR, make sure visible checks are green, hand the user the link. A person merges. Allowed direct pushes: your own branch, and the PM committing this file.
+8. **No-merge rule.** No agent merges a PR, enables auto-merge, or completes it through an API, ever. Open the PR, post your local test results (rule 13), hand the user the link. A person merges. Allowed direct pushes: your own branch, and the PM committing this file.
 9. **Close-out (all boxes, same session):** [ ] worktree removed + pruned, branch deleted locally and on remote (verify) - [ ] detailed notes on the issue - [ ] one-line exec summary comment on the parent Feature - [ ] issue -> Done - [ ] row below -> Done. "PR merged" is not "story done". (Marathon agents stop at "waiting for review"; the person closes after merging.)
 10. **Tracker edits:** `git pull --ff-only` -> edit -> commit/push straight to `main` -> verify local HEAD equals origin. The PM does not push this file while a human has said another agent is editing it; show the diff and ask.
 11. **Scope.** Use only this repo and public documentation. If something seems to need an external or private system, stop and ask the human.
 12. **Lane ownership.** Edit only the paths your lane owns (see Lanes). `docs/api/openapi.yaml` is the contract between lanes: change it only through a contract story, never inside a lane story.
+13. **No CI evidence; run everything locally (owner, 2026-11-12).** GitHub Actions minutes are exhausted, so no agent may depend on, wait for or cite a GitHub CI result. Before opening the PR, run every build, test and check the story needs on your own machine and post the exact commands and results (pass/fail counts, coverage numbers, what was not run) as a **comment on the story's issue** and in the PR description. API: `dotnet build StargateAPI.sln -warnaserror`, `dotnet test`. UI (`ui/`): `npm ci`, `npm run lint`, `npm run format:check`, `npm test`, `npm run build`. Never write "green" or "verified" for something you did not run. A workflow file (STAR-17) may be written but is not evidence.
 
 ## Decisions recorded (human-confirmed 2026-11-11 unless noted)
 
@@ -53,6 +54,7 @@ Last updated: 2026-11-12.
 | D9 | The PM created the parent issue and STAR-1..20 on 2026-11-11 with acceptance criteria. The `gh` active account was switched to `dmbierman1210`. |
 | D11 | Contract decisions (owner, 2026-11-11), recorded in STAR-2 (#3): `POST /Person` body is an object `{ "name": "..." }`; the existing response envelope `{ success, message, responseCode }` (+ `errors[]`) is kept, HTTP status equals `responseCode`; names are trimmed, 1-200 chars, unique case-insensitively (the app checks, SQLite NOCASE only folds ASCII). |
 | D12 | Future start dates are **allowed but need a reason** (owner, 2026-11-11; supersedes an earlier "reject" answer). `dutyStartDate` later than today (UTC) without a non-blank `reason` -> 400 with a field error on `reason`. STAR-7 (#8) accepts future dates like any later date; the `Reason` column and the required-reason rule land in STAR-8 (#9). Contract in STAR-2 (#3). |
+| D13 | GitHub Actions cannot be relied on (monthly minutes used up). All tests and checks run locally and their results go on the story as a comment (protocol rule 13). STAR-17 still writes the workflow, but it is validated locally and not run. Owner, 2026-11-12. |
 
 ## Status table
 

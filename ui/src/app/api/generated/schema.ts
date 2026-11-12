@@ -123,6 +123,13 @@ export interface components {
             /** @description Present on validation errors, one entry per invalid field. */
             errors?: components["schemas"]["FieldError"][];
         };
+        ServerErrorResponse: components["schemas"]["BaseResponse"] & {
+            /**
+             * @description Identifier of the failed request; quote it to find the exception in the process log.
+             * @example 00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-00
+             */
+            traceId: string;
+        };
         CreatedResponse: components["schemas"]["BaseResponse"] & {
             /**
              * @description Identifier of the created person or duty.
@@ -224,13 +231,16 @@ export interface components {
                 "application/json": components["schemas"]["ErrorResponse"];
             };
         };
-        /** @description Unexpected server error. The message is generic and never contains internals. */
+        /**
+         * @description Unexpected server error. The message is generic and never contains internals.
+         *     `traceId` identifies the failure in the process log (`LogEntry.TraceId`).
+         */
         InternalServerError: {
             headers: {
                 [name: string]: unknown;
             };
             content: {
-                "application/json": components["schemas"]["ErrorResponse"];
+                "application/json": components["schemas"]["ServerErrorResponse"];
             };
         };
     };

@@ -1,7 +1,8 @@
 # Stargate ACTS UI
 
 Angular app for the Astronaut Career Tracking System, built against the API contract in
-[`docs/api/openapi.yaml`](../docs/api/openapi.yaml) and a local mock API, so it does not wait for the real API.
+[`docs/api/openapi.yaml`](../docs/api/openapi.yaml). It talks to the real API by default; a stateful mock API is
+available as an opt-in for working without the API.
 
 - Angular 21 (standalone components, signals, strict TypeScript, SCSS), Angular Material 21 with a custom dark
   "mission control" theme.
@@ -12,19 +13,20 @@ Angular app for the Astronaut Career Tracking System, built against the API cont
 
 Run everything from this `ui/` folder.
 
-| Command                                   | What it does                                                                                                                                                        |
-| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `npm ci`                                  | Clean install from `package-lock.json` (use `npm install` only to change dependencies).                                                                             |
-| `npm start`                               | Mock API on <http://localhost:3000> and the app on <http://localhost:4200>, together.                                                                               |
-| `npm run start:mock`                      | Only the mock API (`PORT`, `MOCK_EMPTY`, `MOCK_DELAY_MS`, see below).                                                                                               |
-| `npm run start:app`                       | Only the app (`ng serve`); uses `src/environments/environment.development.ts`.                                                                                      |
-| `npm run generate:api`                    | Regenerates the typed API schema from `docs/api/openapi.yaml`.                                                                                                      |
-| `npm run lint`                            | ESLint (TypeScript and templates).                                                                                                                                  |
-| `npm run format` / `npm run format:check` | Prettier (`.prettierrc`: 100 columns, single quotes, `endOfLine: auto` so Windows checkouts with CRLF are not rewritten). `format:check` is what CI should run.     |
-| `npm test`                                | One non-watch run of the app tests (`test:ui`) and the mock-server tests (`test:mock`). Exits by itself, fine for CI.                                               |
-| `npm run build`                           | Production build into `dist/acts-ui` (uses `environment.ts`, the real API URL). Enforces the budgets below.                                                         |
-| `npm run a11y:browser`                    | axe-core, all rules incl. color-contrast, in a real browser against the running app + mock (see "Accessibility"). Needs playwright-core, which is not a dependency. |
-| `npm run walkthrough`                     | Keyboard-only walkthrough (Acting as, add person, add duty, rename) in a real browser. Same prerequisites; run it on a fresh mock.                                  |
+| Command                                   | What it does                                                                                                                                                         |
+| ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm ci`                                  | Clean install from `package-lock.json` (use `npm install` only to change dependencies).                                                                              |
+| `npm start`                               | The app on <http://localhost:4200> against the real API on <http://localhost:5204> (start the API first, or use `..\scripts\start.ps1` from the repo root for both). |
+| `npm run start:with-mock`                 | Opt-in: the mock API on <http://localhost:3000> and the app built with `environment.mock.ts` pointing at it, together.                                               |
+| `npm run start:mock`                      | Only the mock API (`PORT`, `MOCK_EMPTY`, `MOCK_DELAY_MS`, see below).                                                                                                |
+| `npm run e2e`                             | End-to-end smoke test (Playwright): see "End-to-end test" below. Starts its own API and UI.                                                                          |
+| `npm run generate:api`                    | Regenerates the typed API schema from `docs/api/openapi.yaml`.                                                                                                       |
+| `npm run lint`                            | ESLint (TypeScript and templates).                                                                                                                                   |
+| `npm run format` / `npm run format:check` | Prettier (`.prettierrc`: 100 columns, single quotes, `endOfLine: auto` so Windows checkouts with CRLF are not rewritten). `format:check` is what CI should run.      |
+| `npm test`                                | One non-watch run of the app tests (`test:ui`) and the mock-server tests (`test:mock`). Exits by itself, fine for CI.                                                |
+| `npm run build`                           | Production build into `dist/acts-ui` (uses `environment.ts`, the real API URL). Enforces the budgets below.                                                          |
+| `npm run a11y:browser`                    | axe-core, all rules incl. color-contrast, in a real browser against the running app + mock (see "Accessibility"). Needs playwright-core, which is not a dependency.  |
+| `npm run walkthrough`                     | Keyboard-only walkthrough (Acting as, add person, add duty, rename) in a real browser. Same prerequisites; run it on a fresh mock.                                   |
 
 ## Structure
 
@@ -33,7 +35,8 @@ ui/
   mock-server/            Stateful mock API (plain Node ESM, no dependencies) and its node:test tests
   scripts/generate-api.mjs  Contract -> src/app/api/generated/schema.ts
   scripts/a11y-browser.mjs, scripts/keyboard-walkthrough.mjs  Real-browser axe scan and keyboard walkthrough (need playwright-core)
-  src/environments/       apiBaseUrl: development = http://localhost:3000 (mock), production = http://localhost:5204 (real API)
+  src/environments/       apiBaseUrl: development and production = http://localhost:5204 (real API), mock = http://localhost:3000
+  e2e/, playwright.config.ts  End-to-end smoke test against the real API (Playwright)
   src/app/
     api/                  Typed client layer
       generated/          GENERATED, do not edit (header says so); committed
@@ -51,8 +54,30 @@ ui/
 ```
 
 Service methods are named after the contract's `operationId`s and return the typed response envelopes.
-The base URL comes from `API_BASE_URL` (an injection token that defaults to `environment.apiBaseUrl`); to point the
-dev build at the real API, change `environment.development.ts` to `http://localhost:5204`.
+The base URL comes from `API_BASE_URL` (an injection token that defaults to `environment.apiBaseUrl`). It is fixed at
+build time and is localhost only (owner decision D14: no runtime config, no proxy). `ng serve` and `ng build` use
+`environment.development.ts` / `environment.ts` (both `http://localhost:5204`); the `mock` configuration swaps in
+`environment.mock.ts` (`http://localhost:3000`).
+
+## Running against the real API (CORS)
+
+The API allows exactly one browser origin, `http://localhost:4200` (setting `Cors:AllowedOrigin`), only in the
+Development environment, for `GET`, `POST`, `PUT` and the headers `Content-Type` and `X-Actor`. There is no wildcard. If
+the UI is served from another origin (for example another port), start the API with
+`Cors__AllowedOrigin=http://localhost:<port>`.
+
+A browser blocks a call the API does not allow and reports it as a network failure, so a CORS problem looks like
+"API unreachable" in the UI (the message names CORS). When you see it: is the API running on 5204, is it in Development
+(`ASPNETCORE_ENVIRONMENT=Development`), and is the app served from the allowed origin? The browser console names the
+blocked origin.
+
+## End-to-end test
+
+`npm run e2e` runs `e2e/smoke.e2e.ts` with Playwright: add a person, add a duty and see it on the timeline against the
+real API (plus a duplicate-name conflict). The Playwright config starts the API itself on port 5204 with a throwaway
+SQLite file in the temp folder (seeded, never `api/starbase.db`) and the UI on 4200 (an already running UI is reused).
+Stop any API running on 5204 first. One-time setup: `npx playwright install chromium`, or set
+`E2E_BROWSER_CHANNEL=msedge` (or `chrome`) to use an installed browser. It needs the .NET 8 SDK for `dotnet run`.
 
 ## Generated API client
 
@@ -67,7 +92,10 @@ app is updated. After a contract change: run `npm run generate:api`, then `npm r
 
 - API envelope (`success`, `message`, `responseCode`, optional `errors[{field, message}]`) -> `status`, `message`, `errors`.
   Use `error.fieldMessage('reason')` to show a field error.
-- Network failure (status 0) -> message "API unreachable. ...".
+- Network failure (status 0) -> message "API unreachable. ..." (it names CORS as a possible cause, see "Running
+  against the real API").
+- A 500 carries a `traceId`; the message ends with `(reference <traceId>)` so the failure can be found in the API's
+  process log (`LogEntry.TraceId`).
 - Anything else (e.g. an HTML 502 page) -> a generic message with the status.
 
 ## "Acting as" and the X-Actor header
@@ -133,7 +161,8 @@ params: `<a routerLink="/people" [queryParams]="listState.queryParams()">Back to
 ## Person detail (`/people/:name`)
 
 Calls `DutyService.getAstronautDutiesByName` (`GET /AstronautDuty/{name}`, name URL-encoded; the route param is decoded
-by the router, so spaces, `/`, `?` and `%` work). The heading (focused after navigation) is the route name until the
+by the router, so spaces, `/`, `?` and `%` work). The heading is focused after in-app navigation (by the app shell) but
+not on a fresh load or a direct link, so the skip link stays the first Tab stop (owner decision D14). The heading is the route name until the
 response gives the canonical one. Header: status badge (`shared/status-badge.ts`, also used by the list), current rank
 and duty title, career start and end ("Present" while there is no end) and the career length ("5 years, 3 months", from
 the career start to the career end or today; for a returned-from-retirement person it runs to today, "so far").
@@ -218,8 +247,8 @@ message), `core/notifier.ts` (confirmation snackbar, polite live region).
   reports a known-bad snippet. Color-contrast is switched off there (jsdom has no layout).
 - **Automated scan, real browser** (`npm run a11y:browser`, `scripts/a11y-browser.mjs`): all axe rules including
   color-contrast at 1280 and 360 px on people list, person detail (with and without an actor name), rename, add duty (also
-  with banner and errors), Add person dialog, Acting as dialog and 404. Run with `npm run start:mock`, `npm run
-start:app` and `PLAYWRIGHT_CORE_DIR` pointing at a playwright-core install (default
+  with banner and errors), Add person dialog, Acting as dialog and 404. Run with `npm run start:with-mock` (the
+  scans read the mock's seed data), `PLAYWRIGHT_CORE_DIR` pointing at a playwright-core install (default
   `%TEMP%\pw-scratch\node_modules\playwright-core`) and `BROWSER_PATH` at a Chromium browser (default: Edge). Result of
   the last run: 0 violations of any impact, so no theme token needed changing for contrast (the `--acts-*` pairs are
   documented as AA in `styles.scss`).
@@ -268,3 +297,7 @@ budgeted (person page about 31 kB, people page about 14 kB). The warning is abou
 STAR-14 (run-and-look at 360, 768 and 1280 px): `star-14-people-{360,768,1280}.png`, `star-14-person-{360,768,1280}.png`
 (Jane Roe), `star-14-add-duty-{360,768,1280}.png` (Jane Roe, with the "Returning from retirement" banner),
 `star-14-offline.png` (mock stopped: banner + error state) and `star-14-notfound.png`.
+STAR-18 (real API, no mock; `docs/screenshots/integration/`): `01-direct-link-skip-link.png`,
+`02-people-from-live-api.png`, `03-conflict-error.png`, `04-new-person.png`, `05-backdated-needs-reason.png`,
+`06-backdated-saved.png`, `07-return-from-retirement-needs-reason.png`, `08-return-from-retirement-saved.png` and
+`09-case-only-rename.png`.

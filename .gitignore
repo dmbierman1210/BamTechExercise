@@ -11,3 +11,5 @@ TestResults/
 *.user
 .vs/
 .vscode/
+ui/test-results/
+ui/playwright-report/

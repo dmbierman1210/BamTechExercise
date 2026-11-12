@@ -380,10 +380,10 @@ describe('PersonPage', () => {
   });
 
   describe('navigation and focus', () => {
-    it('focuses the page heading after navigating to the page', async () => {
+    it('does not take focus when the page opens (the App shell moves it after in-app navigation)', async () => {
       await show(ACTIVE, ACTIVE_DUTIES);
-      expect(document.activeElement).toBe(el.querySelector('h1'));
-      expect(el.querySelector('h1')?.getAttribute('tabindex')).toBe('-1');
+      expect(document.activeElement).not.toBe(el.querySelector('h1'));
+      expect(document.activeElement).toBe(document.body);
     });
 
     it('has one h1, then h2 for the timeline and h3 per duty', async () => {

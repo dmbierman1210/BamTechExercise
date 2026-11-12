@@ -47,6 +47,38 @@ describe('ApiError.fromHttpError', () => {
     expect(error.isNetworkError).toBe(true);
     expect(error.message).toBe(API_UNREACHABLE_MESSAGE);
     expect(error.message).toMatch(/API unreachable/);
+    expect(error.message).toMatch(/CORS/);
+    expect(error.message).not.toMatch(/mock|npm run/i);
+  });
+
+  it('shows the traceId of a 500 so the failure can be found in the API log', () => {
+    const error = ApiError.fromHttpError(
+      httpError(500, {
+        success: false,
+        message: 'An unexpected error occurred.',
+        responseCode: 500,
+        traceId: '00-abc-def-00',
+      }),
+    );
+    expect(error.traceId).toBe('00-abc-def-00');
+    expect(error.message).toBe('An unexpected error occurred. (reference 00-abc-def-00)');
+  });
+
+  it('ignores a traceId on a client error or one that is not a string', () => {
+    const notFound = ApiError.fromHttpError(
+      httpError(404, {
+        success: false,
+        message: 'Person not found.',
+        responseCode: 404,
+        traceId: 'x',
+      }),
+    );
+    const odd = ApiError.fromHttpError(
+      httpError(500, { success: false, message: 'Oops.', responseCode: 500, traceId: 7 }),
+    );
+    expect(notFound.message).toBe('Person not found.');
+    expect(notFound.traceId).toBeUndefined();
+    expect(odd.message).toBe('Oops.');
   });
 
   it('falls back to a generic message when the body is not an envelope', () => {

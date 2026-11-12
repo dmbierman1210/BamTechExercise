@@ -2,7 +2,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import type { FieldError } from './models';
 
 export const API_UNREACHABLE_MESSAGE =
-  'API unreachable. Check that the API (or the mock: npm run start:mock) is running, then try again.';
+  'API unreachable. Check that the API is running and that it allows this app’s origin (CORS), then try again.';
 
 /** Typed error produced by the error interceptor from the API's error envelope. */
 export class ApiError extends Error {
@@ -13,6 +13,8 @@ export class ApiError extends Error {
     readonly status: number,
     message: string,
     readonly errors: readonly FieldError[] = [],
+    /** Id of a failed request (500 only); it finds the exception in the API's process log. */
+    readonly traceId?: string,
   ) {
     super(message);
   }
@@ -32,7 +34,9 @@ export class ApiError extends Error {
     }
     const body: unknown = error.error;
     if (isEnvelope(body)) {
-      return new ApiError(error.status, body.message, readFieldErrors(body));
+      const traceId = error.status >= 500 ? readTraceId(body) : undefined;
+      const message = traceId ? `${body.message} (reference ${traceId})` : body.message;
+      return new ApiError(error.status, message, readFieldErrors(body), traceId);
     }
     return new ApiError(error.status, `The API returned an unexpected response (${error.status}).`);
   }
@@ -41,6 +45,11 @@ export class ApiError extends Error {
 interface Envelope {
   message: string;
   errors?: unknown;
+  traceId?: unknown;
+}
+
+function readTraceId(body: Envelope): string | undefined {
+  return typeof body.traceId === 'string' && body.traceId.length > 0 ? body.traceId : undefined;
 }
 
 function isEnvelope(body: unknown): body is Envelope {

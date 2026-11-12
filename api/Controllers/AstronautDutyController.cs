@@ -40,6 +40,10 @@ namespace StargateAPI.Controllers
         }
 
         [HttpPost("")]
+        [ProducesResponseType(typeof(CreateAstronautDutyResult), StatusCodes.Status201Created)]
+        [ProducesResponseType(typeof(BaseResponse), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(BaseResponse), StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(BaseResponse), StatusCodes.Status409Conflict)]
         public async Task<IActionResult> CreateAstronautDuty([FromBody] CreateAstronautDuty request)
         {
                 var result = await _mediator.Send(request);

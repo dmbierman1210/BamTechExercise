@@ -106,6 +106,7 @@ namespace StargateAPI.Business.Migrations
 
                     b.Property<string>("DutyTitle")
                         .IsRequired()
+                        .HasMaxLength(100)
                         .HasColumnType("TEXT");
 
                     b.Property<int>("PersonId")
@@ -113,11 +114,13 @@ namespace StargateAPI.Business.Migrations
 
                     b.Property<string>("Rank")
                         .IsRequired()
+                        .HasMaxLength(100)
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("PersonId");
+                    b.HasIndex("PersonId", "DutyStartDate")
+                        .IsUnique();
 
                     b.ToTable("AstronautDuty");
                 });

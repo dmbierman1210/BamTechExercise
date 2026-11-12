@@ -12,6 +12,22 @@
   white-space: nowrap;
 }
 
+.page-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--acts-space-2) var(--acts-space-4);
+
+  h1 {
+    margin: 0 0 var(--acts-space-4);
+  }
+}
+
+.header-hint {
+  margin: calc(var(--acts-space-2) * -1) 0 var(--acts-space-4);
+}
+
 .controls {
   --mat-form-field-filled-container-color: var(--acts-surface-raised);
   --mat-form-field-filled-hover-container-color: var(--acts-surface-raised);

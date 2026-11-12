@@ -9,6 +9,7 @@ import {
 } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
+import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -16,7 +17,10 @@ import { Subscription, map } from 'rxjs';
 import { ApiError } from '../api/api-error';
 import type { PersonAstronaut } from '../api/models';
 import { PersonService } from '../api/person.service';
-import { ActorService } from '../core/actor.service';
+import { ActorHint } from '../core/actor-hint';
+import { ActorRequiredDirective } from '../core/actor-required.directive';
+import { Notifier } from '../core/notifier';
+import { AddPersonDialog } from './add-person-dialog';
 import {
   type ListFilters,
   type SortOrder,
@@ -40,7 +44,15 @@ type LoadState =
 @Component({
   selector: 'app-people-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [MatButtonModule, MatIconModule, MatInputModule, RouterLink, StatusBadge],
+  imports: [
+    MatButtonModule,
+    MatIconModule,
+    MatInputModule,
+    RouterLink,
+    StatusBadge,
+    ActorHint,
+    ActorRequiredDirective,
+  ],
   templateUrl: './people-page.html',
   styleUrl: './people-page.scss',
 })
@@ -50,7 +62,8 @@ export class PeoplePage {
   private readonly route = inject(ActivatedRoute);
   private readonly listState = inject(PeopleListState);
   private readonly destroyRef = inject(DestroyRef);
-  private readonly actors = inject(ActorService);
+  private readonly dialog = inject(MatDialog);
+  private readonly notifier = inject(Notifier);
   private request?: Subscription;
 
   protected readonly statusFilters = STATUS_FILTERS;
@@ -72,10 +85,18 @@ export class PeoplePage {
     return state.kind === 'error' ? state.message : '';
   });
   protected readonly visible = computed(() => filterAndSort(this.all(), this.filters()));
-  /** The Add person action only exists as a placeholder until STAR-13 builds it. */
-  protected readonly addHint = computed(() =>
-    this.actors.hasActor() ? 'Adding people is not available yet.' : this.actors.hint,
-  );
+  /** Opens the Add person dialog; on success goes to the new person (the list reloads when it is opened again). */
+  protected addPerson(): void {
+    this.dialog
+      .open<AddPersonDialog, undefined, string>(AddPersonDialog, { autoFocus: 'first-tabbable' })
+      .afterClosed()
+      .subscribe((name) => {
+        if (name) {
+          this.notifier.confirm(`Added ${name}.`);
+          void this.router.navigate(['/people', name]);
+        }
+      });
+  }
 
   constructor() {
     effect(() => this.listState.remember(toQueryParams(this.filters())));

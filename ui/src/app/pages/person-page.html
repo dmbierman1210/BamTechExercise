@@ -13,8 +13,35 @@
       <h1 id="person-heading" #heading tabindex="-1">{{ title() }}</h1>
       @if (person(); as p) {
         <app-status-badge [status]="p.astronautStatus" />
+        <div class="actions">
+          <button
+            mat-stroked-button
+            type="button"
+            #renameButton
+            appActorRequired="person-write-hint"
+            [attr.aria-expanded]="panel() === 'rename'"
+            (click)="toggle('rename')"
+          >
+            <mat-icon aria-hidden="true">edit</mat-icon>
+            Rename
+          </button>
+          <button
+            mat-flat-button
+            type="button"
+            #dutyButton
+            appActorRequired="person-write-hint"
+            [attr.aria-expanded]="panel() === 'duty'"
+            (click)="toggle('duty')"
+          >
+            <mat-icon aria-hidden="true">add_task</mat-icon>
+            Add duty
+          </button>
+        </div>
       }
     </div>
+    @if (person()) {
+      <app-actor-hint id="person-write-hint" />
+    }
 
     @if (person(); as p) {
       <dl class="facts">
@@ -68,6 +95,25 @@
       </div>
     }
   </header>
+
+  @if (person(); as p) {
+    @if (panel() === 'rename') {
+      <app-rename-person-form
+        [currentName]="p.name"
+        (renamed)="onRenamed($event)"
+        (cancelled)="closePanel()"
+        (busy)="writing.set($event)"
+      />
+    } @else if (panel() === 'duty') {
+      <app-add-duty-form
+        [person]="p"
+        [history]="history()"
+        (saved)="onDutySaved()"
+        (cancelled)="closePanel()"
+        (busy)="writing.set($event)"
+      />
+    }
+  }
 
   @switch (state().kind) {
     @case ('loading') {

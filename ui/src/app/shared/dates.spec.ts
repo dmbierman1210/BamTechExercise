@@ -1,4 +1,18 @@
-import { formatCareerLength, formatDate, monthsBetween, parseIsoDate, todayIsoDate } from './dates';
+import {
+  formatCareerLength,
+  formatDate,
+  monthsBetween,
+  parseIsoDate,
+  todayIsoDate,
+  todayUtcIsoDate,
+} from './dates';
+
+describe('todayUtcIsoDate', () => {
+  it('is the UTC calendar day, whatever the local time zone', () => {
+    expect(todayUtcIsoDate(new Date('2026-11-11T23:30:00Z'))).toBe('2026-11-11');
+    expect(todayUtcIsoDate(new Date('2026-11-12T00:30:00Z'))).toBe('2026-11-12');
+  });
+});
 
 // No @types/node in the app: reach the runner's environment without it.
 const env = (globalThis as unknown as { process: { env: Record<string, string | undefined> } })

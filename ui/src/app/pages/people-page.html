@@ -3,7 +3,22 @@
   aria-labelledby="people-heading"
   [attr.aria-busy]="state().kind === 'loading'"
 >
-  <h1 id="people-heading" #heading tabindex="-1">People</h1>
+  <div class="page-header">
+    <h1 id="people-heading" #heading tabindex="-1">People</h1>
+    <button
+      mat-flat-button
+      type="button"
+      class="add-person"
+      appActorRequired="add-person-hint"
+      (click)="addPerson()"
+    >
+      <mat-icon aria-hidden="true">person_add</mat-icon>
+      Add person
+    </button>
+  </div>
+  @if (!(state().kind === 'loaded' && all().length === 0)) {
+    <app-actor-hint id="add-person-hint" class="header-hint" />
+  }
 
   @switch (state().kind) {
     @case ('loading') {
@@ -38,14 +53,14 @@
           <button
             mat-flat-button
             type="button"
-            disabledInteractive
-            [disabled]="true"
-            aria-describedby="add-person-hint"
+            class="add-person-empty"
+            appActorRequired="add-person-hint"
+            (click)="addPerson()"
           >
             <mat-icon aria-hidden="true">person_add</mat-icon>
             Add person
           </button>
-          <p id="add-person-hint" class="acts-muted hint">{{ addHint() }}</p>
+          <app-actor-hint id="add-person-hint" />
         </div>
       } @else {
         <form

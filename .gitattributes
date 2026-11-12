@@ -1,1 +1,4 @@
 docs/EXERCISE.md -text
+# Windows batch files need CRLF line endings to run correctly
+*.bat text eol=crlf
+*.cmd text eol=crlf
